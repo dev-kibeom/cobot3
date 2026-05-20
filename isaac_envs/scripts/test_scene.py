@@ -8,7 +8,7 @@ from isaacsim.robot.wheeled_robots.robots import WheeledRobot
 from isaacsim.robot.manipulators.manipulators import SingleManipulator
 from isaacsim.robot.manipulators.grippers import ParallelGripper
 from isaacsim.core.utils.stage import add_reference_to_stage
-from pxr import Usd, UsdPhysics
+from pxr import Usd, UsdPhysics, UsdGeom, Gf
 
 def find_prim_path_by_name(root_path, link_name):
     """USD Stage에서 특정 이름을 가진 Prim의 경로를 찾는 유틸리티 함수"""
@@ -35,32 +35,25 @@ def main():
     world = World()
     world.scene.add_default_ground_plane()
 
-    # =========================================================================
-    # Nucleus 클라우드 USD 로봇 스폰
-    # =========================================================================
-    print("[INFO] 로봇 에셋을 다운로드 및 배치 중입니다. (최초 실행 시 시간 소요)")
+    home_dir = os.path.expanduser("~")
 
-    jetbot_asset_path = "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/Jetbot/jetbot.usd"
-
-    jetbot = world.scene.add(
-        WheeledRobot(
-            prim_path="/World/Jetbot",
-            name="my_jetbot",
-            wheel_dof_names=["left_wheel_joint", "right_wheel_joint"],
-            create_robot=True,
-            usd_path=jetbot_asset_path,
-            position=np.array([0.0, 1.0, 0.0]),  # y축으로 1m 띄워서 스폰
-        )
+    # jetbot 로드
+    jetbot_usd_path = os.path.join(
+        home_dir, "smart_factory_project", "isaac_envs", "assets", "jetbot.usd"
     )
 
-    # =========================================================================
-    # 로컬 URDF 로봇 스폰 
-    # =========================================================================
+    # WheeledRobot 클래스 대신 일반 참조로 깔끔하게 불러옵니다.
+    add_reference_to_stage(usd_path=jetbot_usd_path, prim_path="/World/Jetbot")
+
+    # 젯봇의 위치를 옆으로 살짝 옮겨줍니다 (로딩 직후 Transform 속성 변경)
+    jetbot_prim = omni.usd.get_context().get_stage().GetPrimAtPath("/World/Jetbot")
+    if jetbot_prim.IsValid():
+        xform = UsdGeom.Xformable(jetbot_prim)
+        # 안전하게 Translate 속성을 초기화(생성)하고 값을 세팅합니다.
+        xform.AddTranslateOp().Set(Gf.Vec3d(0.0, 1.0, 0.0))
 
     # 두산 로봇 + 그리퍼 로드
-    doosan_usd_path = (
-        "/home/kibeom/smart_factory_project/isaac_envs/assets/m0609_rg2.usd"
-    )
+    doosan_usd_path = os.path.join(home_dir, "smart_factory_project", "isaac_envs", "assets", "m0609_rg2_d455.usd")
     add_reference_to_stage(usd_path=doosan_usd_path, prim_path="/World/Doosan")
 
     ee_path = find_prim_path_by_name("/World/Doosan", "link_6")
