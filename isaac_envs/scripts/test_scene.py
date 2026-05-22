@@ -48,9 +48,7 @@ def main():
     # 젯봇의 위치를 옆으로 살짝 옮겨줍니다 (로딩 직후 Transform 속성 변경)
     jetbot_prim = omni.usd.get_context().get_stage().GetPrimAtPath("/World/Jetbot")
     if jetbot_prim.IsValid():
-        xform = UsdGeom.Xformable(jetbot_prim)
-        # 안전하게 Translate 속성을 초기화(생성)하고 값을 세팅합니다.
-        xform.AddTranslateOp().Set(Gf.Vec3d(0.0, 1.0, 0.0))
+        UsdGeom.XformCommonAPI(jetbot_prim).SetTranslate(Gf.Vec3d(0.0, 1.0, 0.0))
 
     # 두산 로봇 + 그리퍼 로드
     doosan_usd_path = os.path.join(home_dir, "smart_factory_project", "isaac_envs", "assets", "m0609_rg2_d455.usd")
