@@ -51,3 +51,15 @@ venv/
 # ==========================================
 .DS_Store
 Thumbs.db
+
+# ==========================================
+# Database - Machbase Neo (바이너리/런타임 제외)
+# ==========================================
+database/src/stock_database/*.zip
+database/src/stock_database/machbase-neo-v*/machbase-neo
+database/src/stock_database/machbase-neo-v*/machbase_home/dbs/
+database/src/stock_database/machbase-neo-v*/machbase_home/trc/
+database/src/stock_database/machbase-neo-v*/machbase_home/conf/machbase.pid
+database/src/stock_database/machbase-neo-v*/machbase_home/conf/machbase.lock-*
+database/src/stock_database/machbase-neo-v*/machbase_home/pkgs/
+.Rhistory
