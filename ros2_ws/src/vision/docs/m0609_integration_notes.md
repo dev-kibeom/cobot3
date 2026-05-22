@@ -43,10 +43,10 @@ placing_position = np.array([goal.place.x, goal.place.y, goal.place.z])
 
 ## Vision PC 실행 흐름
 
-우리 비전 컴퓨터는 `ROS_DOMAIN_ID=104`에서 YOLO와 brain을 실행합니다.
+우리 비전 컴퓨터는 `ROS_DOMAIN_ID=105`에서 YOLO와 brain을 실행합니다.
 
 ```bash
-export ROS_DOMAIN_ID=104
+export ROS_DOMAIN_ID=105
 ```
 
 YOLO 노드는 이미지 토픽을 받아 OBB payload를 발행합니다.
@@ -121,7 +121,7 @@ ros2 run vision yolo \
 
 ## Goal Gateway
 
-모션 담당 컴퓨터가 `ROS_DOMAIN_ID=102`를 사용한다면, 이미지나 debug 토픽을 넘기지 말고 최종 goal만 넘깁니다.
+모션 담당 컴퓨터가 `ROS_DOMAIN_ID=103`을 사용한다면, 이미지나 debug 토픽을 넘기지 말고 최종 goal만 넘깁니다.
 
 ```text
 Vision domain
@@ -131,7 +131,7 @@ Vision domain
 goal_gateway.py
         |
         v
-Motion domain 102
+Motion domain 103
   /m0609_vision/pick_place_goal
 ```
 
@@ -139,8 +139,8 @@ Motion domain 102
 
 ```bash
 ros2 run vision goal_gateway \
-  --source-domain 104 \
-  --target-domain 102 \
+  --source-domain 105 \
+  --target-domain 103 \
   --input-topic /global/vision/pick_place_goal \
   --output-topic /m0609_vision/pick_place_goal
 ```

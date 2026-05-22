@@ -1,11 +1,15 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
     return LaunchDescription([
+        SetEnvironmentVariable(
+            "FASTDDS_BUILTIN_TRANSPORTS",
+            EnvironmentVariable("FASTDDS_BUILTIN_TRANSPORTS", default_value="UDPv4"),
+        ),
         DeclareLaunchArgument("cell", default_value="m0609"),
         DeclareLaunchArgument("obb_topic", default_value="/m0609/vision/plate_obb"),
         DeclareLaunchArgument("goal_topic", default_value="/m0609/vision/pick_place_goal"),

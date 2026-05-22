@@ -20,3 +20,5 @@ This ROS2 package owns the migrated vision runtime, Isaac evidence tools, and YO
 | `work/` | Generated images, datasets, runs, and reports. Ignored by git. |
 
 See `tools/README.md` for hard-v2 evidence generation and fine-tuning commands.
+
+For live M0609 D455 integration testing, see `integration_test_quickstart.md`.

@@ -273,6 +273,8 @@ class YoloObbEyeNode(Node):
         self.args = args
         self.bridge = CvBridge()
         self.model = YOLO(args.model)
+        self.get_logger().info(f"model: {args.model}")
+        self.get_logger().info(f"model classes: {getattr(self.model, 'names', {})}")
         self.min_period = 1.0 / args.max_hz if args.max_hz > 0.0 else 0.0
         self.allowed_class_ids = parse_allowed_class_ids(args.allowed_class_ids)
         self.roi = parse_roi(args.roi)
@@ -286,6 +288,7 @@ class YoloObbEyeNode(Node):
         self.last_infer_time = {}
         self.publishers_by_cell = {}
         self.debug_publishers_by_cell = {}
+        self.debug_compressed_publishers_by_cell = {}
 
         cells = [cell.strip() for cell in args.cells.split(",") if cell.strip()]
         if not cells:
@@ -305,7 +308,13 @@ class YoloObbEyeNode(Node):
             )
             if args.publish_debug:
                 debug_topic = args.debug_topic_template.format(cell=cell)
-                self.debug_publishers_by_cell[cell] = self.create_publisher(Image, debug_topic, 10)
+                self.debug_publishers_by_cell[cell] = self.create_publisher(Image, debug_topic, qos_profile_sensor_data)
+                self.debug_compressed_publishers_by_cell[cell] = self.create_publisher(
+                    CompressedImage,
+                    f"{debug_topic}/compressed",
+                    qos_profile_sensor_data,
+                )
+                self.get_logger().info(f"{cell}: debug -> {debug_topic}, {debug_topic}/compressed")
             transport = "compressed" if compressed else "raw"
             self.get_logger().info(f"{cell}: {image_topic} ({transport}) -> {obb_topic}")
         self.get_logger().info(
@@ -355,6 +364,7 @@ class YoloObbEyeNode(Node):
 
     def publish_debug_image(
         self,
+        cell: str,
         msg: Image | CompressedImage,
         frame_bgr: np.ndarray,
         det: ObbDetection,
@@ -383,6 +393,13 @@ class YoloObbEyeNode(Node):
         debug_msg = self.bridge.cv2_to_imgmsg(debug, encoding="bgr8")
         debug_msg.header = msg.header
         self.debug_publishers_by_cell[cell].publish(debug_msg)
+        compressed_msg = CompressedImage()
+        compressed_msg.header = msg.header
+        compressed_msg.format = "jpeg"
+        ok, encoded = cv2.imencode(".jpg", debug, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+        if ok:
+            compressed_msg.data = encoded.tobytes()
+            self.debug_compressed_publishers_by_cell[cell].publish(compressed_msg)
 
     def image_callback(self, msg: Image | CompressedImage, cell: str):
         now = time.monotonic()
@@ -397,12 +414,15 @@ class YoloObbEyeNode(Node):
             self.get_logger().warning(f"{cell}: failed to decode image: {exc}")
             return
 
+        if self.args.publish_debug:
+            self.publish_debug_image(cell, msg, frame_bgr, empty_obb(), None, status="running yolo")
+
         aruco_roi_px = self.detect_aruco_roi(frame_bgr)
         if self.aruco_detector is not None and aruco_roi_px is None:
             det = empty_obb()
             self.publish_detection(cell, det)
             if self.args.publish_debug:
-                self.publish_debug_image(msg, frame_bgr, det, None, status="aruco roi missing")
+                self.publish_debug_image(cell, msg, frame_bgr, det, None, status="aruco roi missing")
             return
 
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
@@ -431,7 +451,7 @@ class YoloObbEyeNode(Node):
         self.publish_detection(cell, det)
 
         if self.args.publish_debug:
-            self.publish_debug_image(msg, frame_bgr, det, aruco_roi_px)
+            self.publish_debug_image(cell, msg, frame_bgr, det, aruco_roi_px)
 
 
 def main():

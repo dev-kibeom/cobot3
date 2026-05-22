@@ -79,7 +79,16 @@ python3 tools/training/train_yolo11s_obb.py \
 
 ## M0609 D455 + YOLO rqt 확인
 
-Isaac Sim에서 M0609, RG2, RealSense D455, 철큐브를 띄우고 D455 color 이미지를 ROS2로 내보냅니다. ROS domain은 기본값 `104`입니다.
+실전 통합테스트용 짧은 명령은 [`../docs/integration_test_quickstart.md`](../docs/integration_test_quickstart.md)를 먼저 봅니다.
+
+천장 top-view 카메라를 쓰는 통합테스트라면 wrist D455 전용 launch 대신 아래를 사용합니다.
+
+```bash
+source /home/rokey/smart_factory_project/cobot3/ros2_ws/src/vision/tools/m0609_test_env.sh
+vtop
+```
+
+Isaac Sim에서 M0609, RG2, RealSense D455, 철큐브를 띄우고 D455 color 이미지를 ROS2로 내보냅니다. ROS domain은 기본값 `105`입니다.
 
 터미널 1: Isaac Sim 카메라 publisher와 goal executor
 
@@ -92,16 +101,14 @@ bash /home/rokey/smart_factory_project/cobot3/ros2_ws/src/vision/tools/isaac/run
 터미널 2: YOLO debug 이미지와 OBB 발행
 
 ```bash
-source /home/rokey/smart_factory_project/cobot3/ros2_ws/install/setup.bash
-export ROS_DOMAIN_ID=104
+source /home/rokey/smart_factory_project/cobot3/ros2_ws/src/vision/tools/m0609_test_env.sh
 ros2 launch vision m0609_d455_yolo.launch.py
 ```
 
 터미널 3: brain 실행
 
 ```bash
-source /home/rokey/smart_factory_project/cobot3/ros2_ws/install/setup.bash
-export ROS_DOMAIN_ID=104
+source /home/rokey/smart_factory_project/cobot3/ros2_ws/src/vision/tools/m0609_test_env.sh
 ros2 launch vision m0609_d455_brain.launch.py
 ```
 
@@ -110,23 +117,23 @@ ros2 launch vision m0609_d455_brain.launch.py
 터미널 4: rqt 확인
 
 ```bash
-export ROS_DOMAIN_ID=104
-rqt_image_view
+source /home/rokey/smart_factory_project/cobot3/ros2_ws/src/vision/tools/m0609_test_env.sh
+vrqt
 ```
 
-`rqt_image_view`에서 원본은 `/m0609/d455/color/image`, YOLO 결과는 `/m0609/vision/debug_image`를 선택합니다. depth 시각화가 필요하면 터미널 1 명령에 `--publish-depth-vis`를 추가하고 `/m0609/d455/depth/vis`를 확인합니다.
+`rqt_image_view`에서 통합테스트 원본은 `/camera/rgb/observer_01/compressed`, YOLO 결과는 `/m0609/vision/debug_image` 또는 `/m0609/vision/debug_image/compressed`를 선택합니다. Isaac smoke tool을 단독으로 돌리는 경우 원본은 `/m0609/d455/color/image`일 수 있습니다. depth 시각화가 필요하면 터미널 1 명령에 `--publish-depth-vis`를 추가하고 `/m0609/d455/depth/vis`를 확인합니다.
 
 ### goal_gateway는 언제 쓰나?
 
-같은 ROS domain 104 안에서 테스트할 때는 `goal_gateway`를 돌리지 않습니다. `goal_gateway`는 vision 쪽 domain과 motion/controller 쪽 domain이 서로 다를 때, 작은 `Float32MultiArray` goal만 복사하는 브리지입니다. 로봇을 움직이는 컨트롤러가 아니므로 gateway만 켜도 M0609는 움직이지 않습니다.
+같은 ROS domain 105 안에서 테스트할 때는 `goal_gateway`를 돌리지 않습니다. `goal_gateway`는 vision 쪽 domain과 motion/controller 쪽 domain이 서로 다를 때, 작은 `Float32MultiArray` goal만 복사하는 브리지입니다. 로봇을 움직이는 컨트롤러가 아니므로 gateway만 켜도 M0609는 움직이지 않습니다.
 
-예를 들어 vision은 domain 104, motion은 domain 102에서 따로 돌릴 때만 아래처럼 사용합니다.
+예를 들어 vision은 domain 105, motion은 domain 103에서 따로 돌릴 때만 아래처럼 사용합니다.
 
 ```bash
 source /home/rokey/smart_factory_project/cobot3/ros2_ws/install/setup.bash
 ros2 run vision goal_gateway \
-  --source-domain 104 \
-  --target-domain 102 \
+  --source-domain 105 \
+  --target-domain 103 \
   --input-topic /m0609/vision/pick_place_goal \
   --output-topic /m0609_vision/pick_place_goal
 ```

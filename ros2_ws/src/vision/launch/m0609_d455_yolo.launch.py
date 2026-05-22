@@ -1,11 +1,12 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
-from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, OpaqueFunction, SetEnvironmentVariable
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def _nodes(context):
     model = LaunchConfiguration("model").perform(context)
+    aruco_roi_marker_ids = LaunchConfiguration("aruco_roi_marker_ids").perform(context)
     args = [
         "--cells", LaunchConfiguration("cell").perform(context),
         "--image-topic-template", LaunchConfiguration("image_topic").perform(context),
@@ -21,11 +22,12 @@ def _nodes(context):
         "--reject-edge-margin", LaunchConfiguration("reject_edge_margin").perform(context),
         "--min-area-ratio", LaunchConfiguration("min_area_ratio").perform(context),
         "--max-area-ratio", LaunchConfiguration("max_area_ratio").perform(context),
-        "--aruco-roi-marker-ids", LaunchConfiguration("aruco_roi_marker_ids").perform(context),
         "--aruco-dict", LaunchConfiguration("aruco_dict").perform(context),
     ]
     if model:
         args.extend(["--model", model])
+    if aruco_roi_marker_ids:
+        args.extend(["--aruco-roi-marker-ids", aruco_roi_marker_ids])
     return [
         Node(
             package="vision",
@@ -39,8 +41,12 @@ def _nodes(context):
 
 def generate_launch_description():
     return LaunchDescription([
+        SetEnvironmentVariable(
+            "FASTDDS_BUILTIN_TRANSPORTS",
+            EnvironmentVariable("FASTDDS_BUILTIN_TRANSPORTS", default_value="UDPv4"),
+        ),
         DeclareLaunchArgument("cell", default_value="m0609"),
-        DeclareLaunchArgument("image_topic", default_value="/m0609/d455/color/image"),
+        DeclareLaunchArgument("image_topic", default_value="/camera/image_rgb"),
         DeclareLaunchArgument("obb_topic", default_value="/m0609/vision/plate_obb"),
         DeclareLaunchArgument("debug_topic", default_value="/m0609/vision/debug_image"),
         DeclareLaunchArgument("image_transport", default_value="auto"),

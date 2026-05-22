@@ -8,8 +8,8 @@ from __future__ import annotations
 #
 # Example:
 # python3 ros2 run vision goal_gateway \
-#   --source-domain 104 \
-#   --target-domain 102 \
+#   --source-domain 105 \
+#   --target-domain 103 \
 #   --input-topic /global/vision/pick_place_goal \
 #   --output-topic /m0609_vision/pick_place_goal
 
@@ -33,7 +33,7 @@ except ImportError:  # Allows direct execution from the legacy visions directory
 
 
 def default_domain() -> int:
-    value = os.environ.get("ROS_DOMAIN_ID", "104")
+    value = os.environ.get("ROS_DOMAIN_ID", "105")
     try:
         return int(value)
     except ValueError:
@@ -43,7 +43,7 @@ def default_domain() -> int:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-domain", type=int, default=default_domain(), help="Domain that publishes the vision goal.")
-    parser.add_argument("--target-domain", type=int, default=102, help="Motion team ROS_DOMAIN_ID.")
+    parser.add_argument("--target-domain", type=int, default=103, help="Motion team ROS_DOMAIN_ID.")
     parser.add_argument("--input-topic", default="/global/vision/pick_place_goal")
     parser.add_argument("--output-topic", default="/m0609_vision/pick_place_goal")
     parser.add_argument("--min-confidence", type=float, default=0.25)

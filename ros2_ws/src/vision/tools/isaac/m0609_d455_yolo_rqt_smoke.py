@@ -3,12 +3,12 @@ from __future__ import annotations
 # Isaac Sim smoke test for the M0609 wrist-mounted RealSense D455 path.
 #
 # Terminal 1:
-#   export ROS_DOMAIN_ID=104
+#   export ROS_DOMAIN_ID=105
 #   /home/rokey/dev_ws/isaac_sim/isaacsim/_build/linux-x86_64/release/python.sh \
 #     tools/isaac/m0609_d455_yolo_rqt_smoke.py --gui --execute-goals
 #
 # Terminal 2:
-#   export ROS_DOMAIN_ID=104
+#   export ROS_DOMAIN_ID=105
 #   source /home/rokey/smart_factory_project/cobot3/ros2_ws/install/setup.bash
 #   ros2 run vision yolo \
 #     --cells m0609 \
@@ -18,7 +18,7 @@ from __future__ import annotations
 #     --publish-debug true
 #
 # Terminal 3:
-#   export ROS_DOMAIN_ID=104
+#   export ROS_DOMAIN_ID=105
 #   rqt_image_view
 
 import argparse
@@ -35,7 +35,7 @@ def parse_args():
     root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser()
     parser.add_argument("--gui", action="store_true", help="Run Isaac Sim with GUI.")
-    parser.add_argument("--ros-domain", type=int, default=104)
+    parser.add_argument("--ros-domain", type=int, default=105)
     parser.add_argument("--ros-cell", default="m0609")
     parser.add_argument("--ros-rate", type=float, default=10.0)
     parser.add_argument("--ros-frames", type=int, default=0, help="0 means publish until interrupted.")
