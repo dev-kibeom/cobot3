@@ -20,7 +20,7 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage, Image
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Empty, Float32MultiArray
 
 from ultralytics import YOLO
 
@@ -72,6 +72,11 @@ def parse_args():
     parser.add_argument("--image-topic-template", default="/{cell}/top_camera/image")
     parser.add_argument("--obb-topic-template", default="/{cell}/vision/plate_obb")
     parser.add_argument("--debug-topic-template", default="/{cell}/vision/debug_image")
+    parser.add_argument(
+        "--trigger-topic-template",
+        default="",
+        help="Optional std_msgs/Empty topic. When set, cache images and run YOLO only when triggered.",
+    )
     parser.add_argument(
         "--image-transport",
         choices=("auto", "raw", "compressed"),
@@ -275,6 +280,7 @@ class YoloObbEyeNode(Node):
         self.model = YOLO(args.model)
         self.get_logger().info(f"model: {args.model}")
         self.get_logger().info(f"model classes: {getattr(self.model, 'names', {})}")
+        self.triggered_mode = bool(args.trigger_topic_template)
         self.min_period = 1.0 / args.max_hz if args.max_hz > 0.0 else 0.0
         self.allowed_class_ids = parse_allowed_class_ids(args.allowed_class_ids)
         self.roi = parse_roi(args.roi)
@@ -286,6 +292,7 @@ class YoloObbEyeNode(Node):
                 cv2.aruco.DetectorParameters(),
             )
         self.last_infer_time = {}
+        self.latest_msg_by_cell = {}
         self.publishers_by_cell = {}
         self.debug_publishers_by_cell = {}
         self.debug_compressed_publishers_by_cell = {}
@@ -297,6 +304,7 @@ class YoloObbEyeNode(Node):
         for cell in cells:
             image_topic = args.image_topic_template.format(cell=cell)
             obb_topic = args.obb_topic_template.format(cell=cell)
+            trigger_topic = args.trigger_topic_template.format(cell=cell) if args.trigger_topic_template else ""
             compressed = self.uses_compressed_image(image_topic)
             image_msg_type = CompressedImage if compressed else Image
             self.publishers_by_cell[cell] = self.create_publisher(Float32MultiArray, obb_topic, 10)
@@ -306,6 +314,14 @@ class YoloObbEyeNode(Node):
                 functools.partial(self.image_callback, cell=cell),
                 qos_profile_sensor_data,
             )
+            if trigger_topic:
+                self.create_subscription(
+                    Empty,
+                    trigger_topic,
+                    functools.partial(self.trigger_callback, cell=cell),
+                    10,
+                )
+                self.get_logger().info(f"{cell}: trigger <- {trigger_topic}")
             if args.publish_debug:
                 debug_topic = args.debug_topic_template.format(cell=cell)
                 self.debug_publishers_by_cell[cell] = self.create_publisher(Image, debug_topic, qos_profile_sensor_data)
@@ -316,7 +332,8 @@ class YoloObbEyeNode(Node):
                 )
                 self.get_logger().info(f"{cell}: debug -> {debug_topic}, {debug_topic}/compressed")
             transport = "compressed" if compressed else "raw"
-            self.get_logger().info(f"{cell}: {image_topic} ({transport}) -> {obb_topic}")
+            mode = "triggered" if trigger_topic else "streaming"
+            self.get_logger().info(f"{cell}: {image_topic} ({transport}, {mode}) -> {obb_topic}")
         self.get_logger().info(
             "filters "
             f"allowed_class_ids={sorted(self.allowed_class_ids) if self.allowed_class_ids is not None else 'all'} "
@@ -402,6 +419,21 @@ class YoloObbEyeNode(Node):
             self.debug_compressed_publishers_by_cell[cell].publish(compressed_msg)
 
     def image_callback(self, msg: Image | CompressedImage, cell: str):
+        if self.triggered_mode:
+            self.latest_msg_by_cell[cell] = msg
+            return
+
+        self.run_inference(msg, cell)
+
+    def trigger_callback(self, _msg: Empty, cell: str):
+        msg = self.latest_msg_by_cell.get(cell)
+        if msg is None:
+            self.get_logger().warning(f"{cell}: capture requested but no image has been received yet")
+            return
+        self.get_logger().info(f"{cell}: capture requested; running YOLO on latest frame")
+        self.run_inference(msg, cell)
+
+    def run_inference(self, msg: Image | CompressedImage, cell: str):
         now = time.monotonic()
         last = self.last_infer_time.get(cell, 0.0)
         if self.min_period and now - last < self.min_period:
@@ -414,7 +446,7 @@ class YoloObbEyeNode(Node):
             self.get_logger().warning(f"{cell}: failed to decode image: {exc}")
             return
 
-        if self.args.publish_debug:
+        if self.args.publish_debug and self.triggered_mode:
             self.publish_debug_image(cell, msg, frame_bgr, empty_obb(), None, status="running yolo")
 
         aruco_roi_px = self.detect_aruco_roi(frame_bgr)
@@ -426,13 +458,21 @@ class YoloObbEyeNode(Node):
             return
 
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-        results = self.model.predict(
-            source=frame_rgb,
-            imgsz=self.args.imgsz,
-            conf=self.args.conf,
-            device=self.args.device,
-            verbose=False,
-        )
+        try:
+            results = self.model.predict(
+                source=frame_rgb,
+                imgsz=self.args.imgsz,
+                conf=self.args.conf,
+                device=self.args.device,
+                verbose=False,
+            )
+        except Exception as exc:
+            det = empty_obb()
+            self.get_logger().warning(f"{cell}: YOLO inference failed: {exc}")
+            self.publish_detection(cell, det)
+            if self.args.publish_debug:
+                self.publish_debug_image(cell, msg, frame_bgr, det, aruco_roi_px, status="yolo error")
+            return
 
         det = (
             best_obb_detection(

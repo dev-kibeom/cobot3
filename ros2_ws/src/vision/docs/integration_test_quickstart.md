@@ -7,6 +7,7 @@
 | 구분 | 토픽 |
 | --- | --- |
 | 입력 이미지 | `/camera/rgb/observer_01/compressed` |
+| 추론 요청 | `/m0609/vision/capture_request` |
 | YOLO OBB 결과 | `/m0609/vision/plate_obb` |
 | YOLO debug 이미지 | `/m0609/vision/debug_image` |
 | YOLO debug 압축 이미지 | `/m0609/vision/debug_image/compressed` |
@@ -70,7 +71,7 @@ ros2 launch vision m0609_d455_yolo.launch.py \
 ros2 launch vision m0609_d455_yolo.launch.py conf:=0.25
 ```
 
-천장 top-view 카메라라면 아래 launch를 권장합니다. YOLO와 Brain을 한 파일로 실행하지만, 내부 노드는 분리되어 있습니다.
+천장 top-view 카메라라면 아래 launch를 권장합니다. YOLO와 Brain을 한 파일로 실행하지만, 내부 노드는 분리되어 있습니다. 기본은 실시간 추론입니다.
 
 ```bash
 ros2 launch vision m0609_topview_pipeline.launch.py
@@ -78,16 +79,23 @@ ros2 launch vision m0609_topview_pipeline.launch.py
 
 top-view launch는 `/camera/rgb/observer_01/compressed`를 compressed 이미지 입력으로 받고, 철판과 큐브 둘 다 후보로 봅니다. debug 이미지는 동일하게 `/m0609/vision/debug_image`입니다.
 
+요청 기반 1회 추론 모드가 필요할 때만 trigger topic을 지정합니다.
+
+```bash
+ros2 launch vision m0609_topview_pipeline.launch.py trigger_topic:=/m0609/vision/capture_request
+ros2 topic pub --once /m0609/vision/capture_request std_msgs/msg/Empty "{}"
+```
+
 철판만 작게 테스트:
 
 ```bash
-ros2 launch vision m0609_topview_pipeline.launch.py allowed_class_ids:=0
+ros2 launch vision m0609_topview_pipeline.launch.py allowed_class_ids:=0 conf:=0.05
 ```
 
 큐브만 작게 테스트:
 
 ```bash
-ros2 launch vision m0609_topview_pipeline.launch.py allowed_class_ids:=1
+ros2 launch vision m0609_topview_pipeline.launch.py allowed_class_ids:=1 conf:=0.05
 ```
 
 ## 터미널 3: Brain 실행
@@ -129,14 +137,16 @@ ros2 topic hz /m0609/vision/debug_image/compressed
 
 ## 한 컴퓨터에서 전체 vision만 실행
 
-이미지 토픽이 이미 들어오고 있다면 아래 두 개만 켜면 됩니다.
+천장 top-view에서 이미지 토픽이 이미 들어오고 있다면 아래를 켭니다.
 
 ```bash
-ros2 launch vision m0609_d455_yolo.launch.py
+ros2 launch vision m0609_topview_pipeline.launch.py
 ```
 
+추론할 때마다 요청을 한 번 보냅니다.
+
 ```bash
-ros2 launch vision m0609_d455_brain.launch.py
+ros2 topic pub --once /m0609/vision/capture_request std_msgs/msg/Empty "{}"
 ```
 
 ## 모션 컴퓨터와 ROS_DOMAIN_ID가 다를 때
@@ -179,6 +189,8 @@ source /home/rokey/smart_factory_project/cobot3/ros2_ws/src/vision/tools/m0609_t
 vyolo
 vbrain
 vtop
+vtop_once
+vtrigger
 vgateway103
 vmotiongoal
 vrqt
@@ -192,7 +204,7 @@ vgoal
 | `/camera/rgb/observer_01/compressed`가 안 보임 | 양쪽 PC의 `ROS_DOMAIN_ID`, 네트워크, 이미지 publisher 실행 여부 |
 | FastDDS SHM 에러 | 모든 터미널에 `export FASTDDS_BUILTIN_TRANSPORTS=UDPv4` |
 | 원본은 보이는데 debug가 안 보임 | YOLO launch 실행 여부, 모델 경로, YOLO 로그 |
-| debug는 보이는데 검출이 없음 | confidence, 모델 weight, D455 wrist-view 학습 데이터, ROI/class filter |
+| debug는 보이는데 검출이 없음 | `vtrigger` 요청 여부, confidence, 모델 weight, top-view 실제 샘플 데이터, ROI/class filter |
 | Brain goal이 안 나옴 | top-view는 `m0609_topview_pipeline.launch.py`, wrist-view는 `/m0609/d455/t_world_camera` 수신 여부 |
 | 모션 컴에서 goal이 안 보임 | gateway 실행 여부, `ROS_DOMAIN_ID=103`, `/m0609_vision/pick_place_goal` echo |
 | 로봇이 안 움직임 | motion executor가 `/m0609_vision/pick_place_goal` 또는 gateway output topic을 구독하는지 확인 |

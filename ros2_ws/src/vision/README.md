@@ -28,6 +28,7 @@ vrqt
 
 ```bash
 vtop
+vtrigger
 ```
 
 ## Short commands

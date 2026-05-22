@@ -86,6 +86,7 @@ python3 tools/training/train_yolo11s_obb.py \
 ```bash
 source /home/rokey/smart_factory_project/cobot3/ros2_ws/src/vision/tools/m0609_test_env.sh
 vtop
+vtrigger
 ```
 
 Isaac Sim에서 M0609, RG2, RealSense D455, 철큐브를 띄우고 D455 color 이미지를 ROS2로 내보냅니다. ROS domain은 기본값 `105`입니다.
