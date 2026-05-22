@@ -43,12 +43,12 @@ CREATE TABLE material_stock (
  
 -- ── 부품 재고 ────────────────────────────────────────────────────────────────
 CREATE TABLE part_stock (
-  part_code  SMALLINT      NOT NULL,
-  quantity   DECIMAL(12,3) NOT NULL DEFAULT 0,
-  unit_id    SMALLINT      NOT NULL,
-  max_qty    DECIMAL(12,3) NOT NULL DEFAULT 0,
-  updated_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
-                           ON UPDATE CURRENT_TIMESTAMP,
+  part_code  SMALLINT NOT NULL,
+  quantity   INT      NOT NULL DEFAULT 0,
+  unit_id    SMALLINT  NOT NULL,
+  max_qty    INT      NOT NULL DEFAULT 0,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                      ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (part_code),
   CONSTRAINT fk_ps_part FOREIGN KEY (part_code) REFERENCES part_master (part_code),
   CONSTRAINT fk_ps_unit FOREIGN KEY (unit_id)   REFERENCES unit_master (unit_id)
