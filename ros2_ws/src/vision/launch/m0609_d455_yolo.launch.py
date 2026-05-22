@@ -1,0 +1,60 @@
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+
+def _nodes(context):
+    model = LaunchConfiguration("model").perform(context)
+    args = [
+        "--cells", LaunchConfiguration("cell").perform(context),
+        "--image-topic-template", LaunchConfiguration("image_topic").perform(context),
+        "--obb-topic-template", LaunchConfiguration("obb_topic").perform(context),
+        "--debug-topic-template", LaunchConfiguration("debug_topic").perform(context),
+        "--image-transport", LaunchConfiguration("image_transport").perform(context),
+        "--imgsz", LaunchConfiguration("imgsz").perform(context),
+        "--conf", LaunchConfiguration("conf").perform(context),
+        "--device", LaunchConfiguration("device").perform(context),
+        "--publish-debug", LaunchConfiguration("publish_debug").perform(context),
+        "--allowed-class-ids", LaunchConfiguration("allowed_class_ids").perform(context),
+        "--roi", LaunchConfiguration("roi").perform(context),
+        "--reject-edge-margin", LaunchConfiguration("reject_edge_margin").perform(context),
+        "--min-area-ratio", LaunchConfiguration("min_area_ratio").perform(context),
+        "--max-area-ratio", LaunchConfiguration("max_area_ratio").perform(context),
+        "--aruco-roi-marker-ids", LaunchConfiguration("aruco_roi_marker_ids").perform(context),
+        "--aruco-dict", LaunchConfiguration("aruco_dict").perform(context),
+    ]
+    if model:
+        args.extend(["--model", model])
+    return [
+        Node(
+            package="vision",
+            executable="yolo",
+            name="m0609_yolo11s_obb_eye_node",
+            output="screen",
+            arguments=args,
+        )
+    ]
+
+
+def generate_launch_description():
+    return LaunchDescription([
+        DeclareLaunchArgument("cell", default_value="m0609"),
+        DeclareLaunchArgument("image_topic", default_value="/m0609/d455/color/image"),
+        DeclareLaunchArgument("obb_topic", default_value="/m0609/vision/plate_obb"),
+        DeclareLaunchArgument("debug_topic", default_value="/m0609/vision/debug_image"),
+        DeclareLaunchArgument("image_transport", default_value="auto"),
+        DeclareLaunchArgument("model", default_value=""),
+        DeclareLaunchArgument("publish_debug", default_value="true"),
+        DeclareLaunchArgument("imgsz", default_value="960"),
+        DeclareLaunchArgument("conf", default_value="0.45"),
+        DeclareLaunchArgument("device", default_value="0"),
+        DeclareLaunchArgument("allowed_class_ids", default_value="1"),
+        DeclareLaunchArgument("roi", default_value="0.05,0.05,0.88,0.95"),
+        DeclareLaunchArgument("reject_edge_margin", default_value="0.02"),
+        DeclareLaunchArgument("min_area_ratio", default_value="0.001"),
+        DeclareLaunchArgument("max_area_ratio", default_value="0.20"),
+        DeclareLaunchArgument("aruco_roi_marker_ids", default_value=""),
+        DeclareLaunchArgument("aruco_dict", default_value="DICT_6X6_250"),
+        OpaqueFunction(function=_nodes),
+    ])
