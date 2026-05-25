@@ -1,0 +1,9 @@
+{
+  "workstations": [
+    {"id": "STATION-001", "name": "Assembly_Line", "x": 5.5, "y": -2.0, "yaw": 1.57},
+    {"id": "STATION-002", "name": "Inspection_Desk", "x": 8.0, "y": 1.0, "yaw": 0.0}
+  ],
+  "storages": [
+    {"id": "STORAGE-001", "material": "Iron_Cube", "x": -5.0, "y": -5.0, "yaw": 0.0}
+  ]
+}
