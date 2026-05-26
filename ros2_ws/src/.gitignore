@@ -1,7 +1,0 @@
-build/
-install/
-log/
-vision/work/
-**/__pycache__/
-*.py[cod]
-*.pt

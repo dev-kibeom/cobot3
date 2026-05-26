@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'controller'
+package_name = 'bridge'
 
 setup(
     name=package_name,
@@ -14,7 +14,7 @@ setup(
     zip_safe=True,
     maintainer="kibeom",
     maintainer_email="neopkrrl@gmail.com",
-    description="TODO: Package description",
+    description="데이터 전처리 및 통신",
     license="TODO: License declaration",
     extras_require={
         "test": [
@@ -23,8 +23,9 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "pick_and_place_joint_node = controller.pick_and_place_joint:main",
-            "pick_and_place_pos_node = controller.pick_and_place_pos:main",
+            "amr_fms_bridge_node = bridge.amr_fms_bridge:main",
+            "image_bridge_node = bridge.image_bridge_node:main",
+            "lidar_bridge_node = bridge.lidar_bridge_node:main",
         ],
     },
 )
