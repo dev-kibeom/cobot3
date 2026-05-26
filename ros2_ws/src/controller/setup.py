@@ -1,3 +1,5 @@
+import os
+from glob import glob
 from setuptools import find_packages, setup
 
 package_name = 'controller'
@@ -9,6 +11,7 @@ setup(
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
+        (os.path.join("share", package_name, "resource"), glob("resource/*")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -23,8 +26,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "pick_and_place_joint_node = controller.pick_and_place_joint:main",
-            "pick_and_place_pos_node = controller.pick_and_place_pos:main",
+            "m0609_controller = controller.robots.m0609_controller:main",
         ],
     },
 )

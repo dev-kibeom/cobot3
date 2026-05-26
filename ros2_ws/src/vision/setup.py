@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'pixel_to_world = vision.pixel_to_world:main',
         ],
     },
 )
