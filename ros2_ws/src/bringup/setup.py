@@ -14,6 +14,8 @@ setup(
         # 빌드 시 런치와 설정을 share 폴더로 복사합니다.
         (os.path.join("share", package_name, "launch"), glob("launch/*.launch.py")),
         (os.path.join("share", package_name, "config"), glob("config/*.yaml")),
+        (os.path.join("share", package_name, "maps"), glob("maps/*")),
+        (os.path.join("share", package_name, "rviz2"), glob("rviz2/*.rviz")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
