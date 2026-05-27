@@ -21,7 +21,7 @@ class FMSBridgeNode(Node):
         )
 
         # 서버 IP도 유연하게 변경할 수 있도록 파라미터화
-        self.declare_parameter("server_url", "http://127.0.0.1:8001/api/robots/amr")
+        self.declare_parameter("server_url", "http://192.168.10.31:8001/api/robots/amr")
         self.server_url = (
             self.get_parameter("server_url").get_parameter_value().string_value
         )

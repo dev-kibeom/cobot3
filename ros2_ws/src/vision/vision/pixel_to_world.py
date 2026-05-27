@@ -6,7 +6,7 @@ import numpy as np
 from cv_bridge import CvBridge
 import message_filters
 from sensor_msgs.msg import Image, CameraInfo
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PoseStamped
 
 
 class VisionNode(Node):
@@ -23,7 +23,7 @@ class VisionNode(Node):
 
         # 로봇 제어기에게 좌표를 쏴줄 전용 퍼블리셔
         self.target_pub = self.create_publisher(
-            PointStamped, "/vision/target_point", 10
+            PoseStamped, "/vision/target_pose", 10
         )
 
         self.info_sub = self.create_subscription(
@@ -74,10 +74,16 @@ class VisionNode(Node):
             cam_x, cam_y, cam_z = (u - cx) * z / fx, (v - cy) * z / fy, z
 
             # 계산된 좌표를 통신망으로 쏨 (프레임 이름표를 붙여서)
-            msg = PointStamped()
+            msg = PoseStamped()
             msg.header.stamp = self.get_clock().now().to_msg()
             msg.header.frame_id = "camera_color_optical_frame"
-            msg.point.x, msg.point.y, msg.point.z = cam_x, cam_y, cam_z
+            msg.pose.position.x, msg.pose.position.y, msg.pose.position.z = cam_x, cam_y, cam_z
+            
+            # 카메라 정면(아래)을 바라보도록 X축 기준 180도 회전 적용
+            msg.pose.orientation.x = 1.0
+            msg.pose.orientation.y = 0.0
+            msg.pose.orientation.z = 0.0
+            msg.pose.orientation.w = 0.0
 
             self.target_pub.publish(msg)
             self.get_logger().info(

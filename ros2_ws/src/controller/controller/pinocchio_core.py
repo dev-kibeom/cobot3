@@ -46,7 +46,9 @@ class PinocchioCore:
             pin.updateFramePlacements(self.model, self.data)
             oMf = self.data.oMf[self.ee_frame_id]
 
-            dMf = oMdes.actInv(oMf)
+            # 🛠️ 수정: 오차를 '현재 프레임(oMf)' 기준으로 계산 (LOCAL)
+            # oMf.actInv(oMdes)는 현재 위치에서 목표 위치로 가기 위한 변환 행렬입니다.
+            dMf = oMf.actInv(oMdes)
             err = pin.log(dMf).vector
 
             if np.linalg.norm(err) < eps:
@@ -55,7 +57,9 @@ class PinocchioCore:
             J = pin.computeFrameJacobian(
                 self.model, self.data, q, self.ee_frame_id, pin.ReferenceFrame.LOCAL
             )
-            v = -J.T @ np.linalg.inv(J @ J.T + damp * np.eye(6)) @ err
+            
+            # 🛠️ 수정: err가 이미 '현재->목표' 방향이므로 부호 반전(-) 제거
+            v = J.T @ np.linalg.inv(J @ J.T + damp * np.eye(6)) @ err
             q = pin.integrate(self.model, q, v * dt)
 
         return False, q
