@@ -362,6 +362,22 @@ handle_update_stock <- function(req, res) {
         mach_part_history(part_code, prod_qty, qty_before, qty_after)
         message(sprintf("  PART %-20s  +%8d  %10d → %10d",
                         part_name(part_code), prod_qty, qty_before, qty_after))
+
+        # metal_panel(part_code=1) 생산 시 material_stock의 metal_panel(mat_code=2)도 동기화
+        # 공정 내 생산 판넬 = 2공정 원자재 판넬이 같은 물건이므로 동시 반영
+        if (part_code == 1) {
+          mat_row <- dbGetQuery(con, "SELECT quantity FROM material_stock WHERE mat_code=2")
+          if (nrow(mat_row)>0) {
+            mat_before <- mat_row$quantity
+            mat_after  <- mat_before + prod_qty
+            dbExecute(con, sprintf(
+              "UPDATE material_stock SET quantity=%.3f, updated_at=NOW() WHERE mat_code=2",
+              mat_after))
+            mach_mat_history(2L, prod_qty, mat_before, mat_after)
+            message(sprintf("  MAT  %-20s  +%8.1f  %10.1f -> %10.1f  [panel 연동]",
+                            "metal_panel", prod_qty, mat_before, mat_after))
+          }
+        }
       }
     }
     message(SEP)
