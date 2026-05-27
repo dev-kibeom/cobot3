@@ -62,13 +62,24 @@ def generate_launch_description():
                     "params_file": param_dir,
                 }.items(),
             ),
-            # 3. DB/웹 FMS 브릿지 노드 실행!
+            # 3. 브릿지 노드 실행 (MQTT 통신)
             Node(
                 package="bridge",
-                executable="amr_fms_bridge",  # bridge 패키지의 setup.py에 등록된 실행 이름
+                executable="mqtt_trigger",  # bridge 패키지의 setup.py에 등록된 실행 이름
                 name="fms_bridge_node",
                 output="screen",
                 parameters=[{"use_sim_time": True, "robot_id": "IW_HUB_01"}],
+            ),
+            # C++ BT 관제탑 실행 노드
+            Node(
+                package="manager",
+                executable="bt_scheduler",
+                name="bt_manager",
+                output="screen",
+                parameters=[
+                    {"robot_id": "IW_HUB_01"},  # 로봇 이름 동적 주입
+                    {"server_url": "http://127.0.0.1:8001/api/robots/amr"},
+                ],
             ),
         ]
     )

@@ -1,10 +1,12 @@
 import json
+from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.services.mqtt import mqtt_service
 from app.models.database import get_db, init_db, TransportRobot, Workstation, RawMaterialStorage, VisionCamera
+from app.services.scheduler import fms_scheduler
 
 # ==========================================
 # 1. FastAPI 애플리케이션 초기화
@@ -15,6 +17,7 @@ app = FastAPI(title="Smart Factory FMS Central Server")
 def startup_event():
     """서버가 켜질 때 DB 테이블을 만들고 MQTT 통신망을 엽니다."""
     init_db()
+    fms_scheduler.start()
     mqtt_service.start()
 
     db = next(get_db())
@@ -66,9 +69,10 @@ class PoseGoalRequest(BaseModel):
 
 class NodeGoalRequest(BaseModel):
     target_node_id: str  # 예: "STATION-001" 또는 "STORAGE-001"
-
+    
 class StatusUpdate(BaseModel):
     status: str
+    completed_task: Optional[str] = None  
 
 
 # ==========================================
@@ -96,6 +100,19 @@ def register_amr(robot_id: str, db: Session = Depends(get_db)):
     robot.status = "IDLE"
     db.commit()
     return {"message": f"Robot {robot_id} re-connected and initialized to IDLE."}
+
+# --- [관리자 테스트용] 특정 작업대에 자재 공급 강제 요청하기 ---
+@app.post("/api/test/trigger_supply/{station_id}")
+def test_trigger_supply(station_id: str, db: Session = Depends(get_db)):
+    station = db.query(Workstation).filter(Workstation.id == station_id).first()
+    if not station:
+        raise HTTPException(status_code=404, detail="Station not found")
+
+    # 깃발을 번쩍 듭니다! (스케줄러가 이걸 보고 로봇을 보냅니다)
+    station.needs_supply = True
+    db.commit()
+
+    return {"message": f"🚩 {station_id}에 자재 공급 요청이 발령되었습니다!"}
 
 # --- [명령 하달] 관리자가 운반 로봇(AMR)에게 목표를 지정 ---
 @app.post("/api/robots/amr/{robot_id}/goal")
@@ -159,15 +176,16 @@ def set_amr_goal_by_node(
         },
     }
 
-# --- [상태 폴링] 카터 로봇(브릿지 노드)이 2초마다 일거리를 묻는 곳 ---
 @app.get("/api/robots/amr/{robot_id}/task")
 def get_amr_task(robot_id: str, db: Session = Depends(get_db)):
     robot = db.query(TransportRobot).filter(TransportRobot.id == robot_id).first()
 
-    # 상태가 IDLE이고 목표 좌표가 존재할 때만 작업을 하달
-    if robot and robot.status == "IDLE" and robot.goal_x is not None:
+    # 🚀 C++ BT가 파싱할 수 있도록 task_id와 task_type을 함께 반환합니다.
+    if robot and robot.status == "IDLE" and robot.current_task_id is not None:
         return {
             "has_task": True,
+            "task_id": robot.current_task_id,
+            "task_type": robot.current_task_type,
             "goal": {"x": robot.goal_x, "y": robot.goal_y, "yaw": robot.goal_yaw},
         }
     return {"has_task": False}
@@ -177,7 +195,6 @@ def get_amr_task(robot_id: str, db: Session = Depends(get_db)):
 def get_all_robots(db: Session = Depends(get_db)):
     return db.query(TransportRobot).all()
 
-# --- [결과 보고 & 트리거 발동] 카터가 목적지 도착을 알리는 곳 ---
 @app.post("/api/robots/amr/{robot_id}/status")
 def update_amr_status(
     robot_id: str, update: StatusUpdate, db: Session = Depends(get_db)
@@ -188,19 +205,21 @@ def update_amr_status(
 
     robot.status = update.status
 
-    # 🚀 핵심: 로봇이 도착(ARRIVED)하면 DB를 정리하고 로봇팔을 깨우는 MQTT 송출!
     if update.status == "ARRIVED":
         robot.goal_x = None
         robot.goal_y = None
         robot.goal_yaw = None
-
-        trigger_payload = {
-            "event": "AMR_ARRIVED",
-            "robot_id": robot_id,
-            "action_required": "START_VISION_GRASPING",
-        }
-        # 분리해 둔 mqtt_handler의 함수를 호출하여 브로커로 방송
+        # 도착 시 MQTT 트리거 (기존과 동일)
+        trigger_payload = {"event": "AMR_ARRIVED", "robot_id": robot_id}
         mqtt_service.publish_trigger("fms/trigger/arm", trigger_payload)
+
+    # 🚀 추가: C++ 관제탑이 'ReportTaskCompleteToDB' 노드로 IDLE 상태를 보내면 작업 초기화
+    elif update.status == "IDLE" and update.completed_task:
+        print(
+            f"✅ {robot_id}가 임무({update.completed_task})를 완전히 종료하고 대기 상태로 복귀했습니다."
+        )
+        robot.current_task_id = None
+        robot.current_task_type = None
 
     db.commit()
     return {"message": f"Status updated to {update.status}"}

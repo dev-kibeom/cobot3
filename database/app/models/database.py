@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, Float, ForeignKey
+from sqlalchemy import create_engine, Column, String, Float, ForeignKey, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.core import config
@@ -22,6 +22,9 @@ class TransportRobot(Base):
     model_type = Column(String, nullable=False)  # 예: nova_carter, mir250
     status = Column(String, default="IDLE")  # IDLE, MOVING, ARRIVED, ERROR, CHARGING
     battery_level = Column(Float, default=100.0)  # 배터리 잔량 (%)
+
+    current_task_id = Column(String, nullable=True)  # 예: TASK-1234
+    current_task_type = Column(String, nullable=True)  # 예: supply, collect, idle
 
     # 내비게이션 목적지
     goal_x = Column(Float, nullable=True)
@@ -75,6 +78,9 @@ class Workstation(Base):
     # 현재 이 작업대를 차지하고 있는 운반 로봇의 ID (외래 키)
     # 카터가 도착하면 이 값이 'AMR-001'로 채워지고, 떠나면 Null로 비워집니다.
     current_amr_id = Column(String, ForeignKey("transport_robots.id"), nullable=True)
+
+    needs_supply = Column(Boolean, default=False)  # True면 자재 공급 로봇 호출
+    product_ready = Column(Boolean, default=False)  # True면 완제품 수거 로봇 호출
 
 
 # 📦 [테이블 5] 원자재 보관대 (Raw Material Storage)

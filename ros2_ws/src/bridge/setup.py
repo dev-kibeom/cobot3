@@ -23,7 +23,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "amr_fms_bridge = bridge.amr_fms_bridge:main",
+            "mqtt_trigger = bridge.mqtt_trigger:main",
             "image_bridge = bridge.image_bridge_node:main",
             "lidar_bridge = bridge.lidar_bridge_node:main",
         ],
