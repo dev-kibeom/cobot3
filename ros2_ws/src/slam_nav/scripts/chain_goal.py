@@ -29,6 +29,7 @@ from rclpy.duration import Duration
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy, HistoryPolicy
 from nav2_msgs.action import NavigateToPose
 from geometry_msgs.msg import PoseStamped, Twist
+from std_msgs.msg import Float64, String
 from tf2_ros import Buffer, TransformException
 from tf2_msgs.msg import TFMessage
 from rcl_interfaces.srv import SetParameters
@@ -37,57 +38,69 @@ from rcl_interfaces.msg import Parameter, ParameterValue, ParameterType
 
 # ──────────────────────────────────────────────────────────────────────────
 # WAYPOINTS — robot 별 plus/minus 4개 경로
-# 형식: (name, x, y, yaw_deg, reverse)
-# 고정값(대기/도로 인프라)과 DB값(dolly 픽업/drop) 모두 포함. 추후 DB 통합 시 chain_waypoint_server로 외부 주입.
+# 형식: (name, x, y, yaw_deg, reverse_code)
+#   reverse_code 인코딩 (2026-05-27 확장):
+#     0 — forward (NavigateToPose)
+#     1 — reverse (drive_backward, lift 동작 없음)
+#     2 — reverse + 도착 후 lift_up (0.04) + 5초 대기  (dolly 픽업)
+#     3 — reverse + 도착 후 lift_down (0.0) + 5초 대기 (dolly drop)
+#
+# 패턴:
+#   plus  → C(2) 픽업, G(3) drop
+#   minus → D(2) 픽업, H(3) drop
+#
+# 고정값(대기/도로 인프라)은 chain_goal.py에 hardcoded.
+# DB-가변 좌표(B/C/D/F/G/H for plus, C/D/E/G/H/I for minus)는 PC-D dispatcher가
+# chain_waypoints 토픽으로 PoseArray 형태로 주입 (chain_waypoint_server 처리).
 # ──────────────────────────────────────────────────────────────────────────
 ROUTES = {
     ("iw_hub_ROS_01", "plus"): [
-        ("A",  0.0,    -8.0,    90.0, False),
-        ("B",  0.0,   -12.5,    90.0, False),
-        ("C",  0.0,   -15.25,   90.0, True),
-        ("D",  0.0,   -12.5,    90.0, False),
-        ("E", -1.5,    -5.5,    90.0, False),
-        ("F", -1.5,     0.0,     0.0, False),
-        ("G", -4.125,   0.0,     0.0, True),
-        ("H", -1.5,     0.0,   -90.0, False),
-        ("I", -1.5,    -5.5,   -90.0, False),
-        ("J",  0.0,    -8.0,    90.0, False),
+        ("A",  0.0,    -8.0,    90.0, 0),
+        ("B",  0.0,   -12.5,    90.0, 0),
+        ("C",  0.0,   -15.25,   90.0, 2),    # rev + lift_up (픽업)
+        ("D",  0.0,   -12.5,    90.0, 0),
+        ("E", -1.5,    -5.5,    90.0, 0),
+        ("F", -1.5,     0.0,     0.0, 0),
+        ("G", -4.125,   0.0,     0.0, 3),    # rev + lift_down (drop)
+        ("H", -1.5,     0.0,   -90.0, 0),
+        ("I", -1.5,    -5.5,   -90.0, 0),
+        ("J",  0.0,    -8.0,    90.0, 0),
     ],
     ("iw_hub_ROS_01", "minus"): [
-        ("A",  0.0,    -8.0,    90.0, False),
-        ("B", -1.5,    -5.5,    90.0, False),
-        ("C", -1.5,     0.0,     0.0, False),
-        ("D", -4.125,   0.0,     0.0, True),
-        ("E", -1.5,     0.0,   -90.0, False),
-        ("F", -1.5,    -5.5,   -90.0, False),
-        ("G",  0.0,   -12.5,    90.0, False),
-        ("H",  0.0,   -15.25,   90.0, True),
-        ("I",  0.0,   -12.5,    90.0, False),
-        ("J",  0.0,    -8.0,    90.0, False),
+        ("A",  0.0,    -8.0,    90.0, 0),
+        ("B", -1.5,    -5.5,    90.0, 0),
+        ("C", -1.5,     0.0,     0.0, 0),
+        ("D", -4.125,   0.0,     0.0, 2),    # rev + lift_up (픽업)
+        ("E", -1.5,     0.0,   -90.0, 0),
+        ("F", -1.5,    -5.5,   -90.0, 0),
+        ("G",  0.0,   -12.5,    90.0, 0),
+        ("H",  0.0,   -15.25,   90.0, 3),    # rev + lift_down (drop)
+        ("I",  0.0,   -12.5,    90.0, 0),
+        ("J",  0.0,    -8.0,    90.0, 0),
     ],
     ("iw_hub_ROS_02", "plus"): [
-        ("A",  0.0,    20.0,   -90.0, False),
-        ("B",  0.0,    25.0,   -90.0, False),
-        ("C",  0.0,    27.75,  -90.0, True),    # 2026-05-27 정정 28.75→27.75
-        ("D",  0.0,    25.0,   -90.0, False),
-        ("E",  1.5,    17.5,   -90.0, False),
-        ("F",  1.5,    12.0,   180.0, False),
-        ("G",  4.125,  12.0,   180.0, True),
-        ("H",  1.5,    12.0,    90.0, False),
-        ("I",  1.5,    17.5,    90.0, False),
-        ("J",  0.0,    20.0,   -90.0, False),
+        ("A",  0.0,    20.0,   -90.0, 0),
+        ("B",  0.0,    25.0,   -90.0, 0),
+        ("C",  0.0,    27.75,  -90.0, 2),    # rev + lift_up (픽업)  2026-05-27 27.75
+        ("D",  0.0,    25.0,   -90.0, 0),
+        ("E",  1.5,    17.5,   -90.0, 0),
+        ("F",  1.5,    12.0,   180.0, 0),
+        ("G",  4.125,  12.0,   180.0, 3),    # rev + lift_down (drop)
+        ("H",  1.5,    12.0,    90.0, 0),
+        ("I",  1.5,    17.5,    90.0, 0),
+        ("J",  0.0,    20.0,   -90.0, 0),
     ],
     ("iw_hub_ROS_02", "minus"): [
-        ("A",  0.0,    20.0,   -90.0, False),
-        ("B",  1.5,    17.5,   -90.0, False),   # 2026-05-26 정정 yaw 90→-90
-        ("C",  1.5,    12.0,   180.0, False),   # 2026-05-26 정정 yaw 90→180 (D와 일치)
-        ("D",  4.125,  12.0,   180.0, True),    # reverse: C/D yaw 180 일치 → 직선 후진
-        ("E",  1.5,    12.0,    90.0, False),   # 2026-05-26 정정 yaw 180→90
-        ("F",  1.5,    17.5,    90.0, False),   # 2026-05-26 정정 yaw -90→90
-        ("G",  0.0,    25.0,   -90.0, False),
-        ("H",  0.0,    27.75,  -90.0, True),    # 2026-05-27 정정 28.75→27.75
-        ("I",  0.0,    25.0,   -90.0, False),
-        ("J",  0.0,    20.0,   -90.0, False),
+        ("A",  0.0,    20.0,   -90.0, 0),
+        ("B",  1.5,    17.5,   -90.0, 0),
+        ("C",  1.5,    12.0,   180.0, 0),
+        ("D",  4.125,  12.0,   180.0, 2),    # rev + lift_up (픽업)
+        ("E",  1.5,    12.0,    90.0, 0),
+        ("F",  1.5,    17.5,    90.0, 0),
+        ("G",  0.0,    25.0,   -90.0, 0),
+        ("H",  0.0,    27.75,  -90.0, 3),    # rev + lift_down (drop)  2026-05-27 27.75
+        ("I",  0.0,    25.0,   -90.0, 0),
+        ("J",  0.0,    20.0,   -90.0, 0),
     ],
 }
 
@@ -148,6 +161,10 @@ class ChainGoalSender(Node):
         self._client = ActionClient(self, NavigateToPose, f"{robot_ns}/navigate_to_pose")
         # cmd_vel은 velocity_smoother input topic으로 (jam 방지)
         self._cmd_pub = self.create_publisher(Twist, f"{robot_ns}/cmd_vel_nav", 10)
+        # lift 명령 (post-action용) — lift_ramper가 구독해 4초 ramp 처리
+        self._lift_target_pub = self.create_publisher(Float64, f"{robot_ns}/lift_target", 10)
+        # 작업 완료 신호 — PC-D dispatcher가 구독해 DB 갱신
+        self._chain_done_pub = self.create_publisher(String, f"{robot_ns}/chain_done", 10)
 
         # lidar self-filter pickup_approach toggle service
         lidar_filter_node = f"/{bare}_lidar_self_filter"
@@ -435,17 +452,60 @@ class ChainGoalSender(Node):
                 f"err=({err_x:+.3f},{err_y:+.3f},{err_yaw_deg:+.2f}°)")
         return True
 
-    def execute_sequence(self, waypoints):
-        """[(name, x, y, yaw_deg, reverse), ...] 리스트 순차 실행.
-        reverse 진입 직전 자동 pickup_approach=True (drive_backward 내부 처리)."""
-        for (name, x, y, yaw, reverse) in waypoints:
-            if reverse:
-                ok = self.drive_backward(name, x, y, yaw)
-            else:
+    # ───── lift post-action (reverse_code 2/3 처리) ─────────────────────────
+    LIFT_POST_WAIT_SEC = 5.0    # 4초 ramp + 1초 여유 (2026-05-27 사용자 결정)
+    LIFT_UP_TARGET = 0.04       # dolly 픽업 시 lift z
+    LIFT_DOWN_TARGET = 0.0      # dolly drop 시 lift z
+
+    def _lift_post_action(self, name: str, action: str):
+        """reverse waypoint 도착 직후 lift 명령 publish + 5초 대기.
+        action: 'lift_up' / 'lift_down'."""
+        target = self.LIFT_UP_TARGET if action == "lift_up" else self.LIFT_DOWN_TARGET
+        self._lift_target_pub.publish(Float64(data=float(target)))
+        self.get_logger().info(
+            f"[{name}] {action} → lift_target={target:.2f}, {self.LIFT_POST_WAIT_SEC:.0f}초 대기")
+        t0 = time.time()
+        while time.time() - t0 < self.LIFT_POST_WAIT_SEC and rclpy.ok():
+            rclpy.spin_once(self, timeout_sec=0.05)
+
+    def execute_sequence(self, waypoints, task_id: str = ""):
+        """[(name, x, y, yaw_deg, reverse_code), ...] 리스트 순차 실행.
+
+        reverse_code 인코딩 (2026-05-27 확장):
+          0 — forward (NavigateToPose)
+          1 — reverse (drive_backward, lift 동작 없음)
+          2 — reverse + 도착 후 lift_up (0.04) + 5초 대기
+          3 — reverse + 도착 후 lift_down (0.0) + 5초 대기
+
+        구버전 호환: reverse_code가 bool이면 True→1, False→0으로 처리.
+        task_id 비어있지 않으면 sequence 완료 시 /<robot>/chain_done 에 'task_done:<id>' publish.
+        """
+        for wp in waypoints:
+            name, x, y, yaw = wp[0], wp[1], wp[2], wp[3]
+            # reverse_code 정규화 (bool 호환)
+            rc = wp[4]
+            if isinstance(rc, bool):
+                rc = 1 if rc else 0
+            rc = int(rc)
+
+            if rc == 0:
                 ok = self.send(name, x, y, yaw)
+            else:
+                ok = self.drive_backward(name, x, y, yaw)
+                if ok and rc == 2:
+                    self._lift_post_action(name, "lift_up")
+                elif ok and rc == 3:
+                    self._lift_post_action(name, "lift_down")
+
             if not ok:
                 self.get_logger().error(f"{name} 실패 — sequence 중단")
+                if task_id:
+                    self._chain_done_pub.publish(String(data=f"task_failed:{task_id}"))
                 return False
+
+        if task_id:
+            self._chain_done_pub.publish(String(data=f"task_done:{task_id}"))
+            self.get_logger().info(f"sequence 완료 → chain_done publish (task_id={task_id})")
         return True
 
 

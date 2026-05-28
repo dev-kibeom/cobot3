@@ -8,7 +8,7 @@
             }
             dictionary Perspective = {
                 double3 position = (-4.168757453179393, -8.624884345498685, 4.838909412872659)
-                double3 target = (13.183241620797624, -35.92403478811629, -9.877041382302167)
+                double3 target = (13.183242671959846, -35.92403644186439, -9.877037075023875)
             }
             dictionary Right = {
                 double3 position = (11.82434990093594, -50006.89097765012, 0.37621135306969544)
@@ -5301,7 +5301,7 @@ def Xform "World"
         )
         quatd xformOp:orient = (0.7071067811865476, 0, 0, 0.7071067811865475)
         float3 xformOp:scale = (1, 1, 1)
-        double3 xformOp:translate = (0, -13.669199420361853, 0.1)
+        double3 xformOp:translate = (0, -8, 0.1)
         uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient", "xformOp:scale"]
 
         over "differential_drive"
@@ -5659,10 +5659,6 @@ def Xform "World"
             int2 fileFormatVersion = (1, 9)
             token pipelineStage = "pipelineStageSimulation"
 
-            # 2026-05-27 v6 lift_joint 제어 — ArticulationController + 물리 drive damping
-            #   /iw_hub_ROS_01/lift_command (JointState) → ArticulationController → joint
-            #   Ramping은 lift_joint의 drive damping/stiffness로 물리적으로 처리
-
             def OmniGraphNode "on_tick" (
                 prepend apiSchemas = ["NodeGraphNodeAPI"]
             )
@@ -5670,11 +5666,13 @@ def Xform "World"
                 token node:type = "omni.graph.action.OnPlaybackTick"
                 int node:typeVersion = 2
                 custom double outputs:deltaSeconds
+                custom double outputs:frame
                 custom uint outputs:tick = 0 (
                     customData = {
                         bool isExecution = 1
                     }
                 )
+                custom double outputs:time
             }
 
             def OmniGraphNode "ros2_context" (
@@ -5718,17 +5716,27 @@ def Xform "World"
                 prepend apiSchemas = ["NodeGraphNodeAPI"]
             )
             {
+                custom double[] inputs:effortCommand
+                prepend double[] inputs:effortCommand.connect = </World/iw_hub_ROS_01/lift_joint_01/subscribe_lift_cmd.outputs:effortCommand>
                 custom uint inputs:execIn
                 prepend uint inputs:execIn.connect = </World/iw_hub_ROS_01/lift_joint_01/subscribe_lift_cmd.outputs:execOut>
+                custom int[] inputs:jointIndices
                 custom token[] inputs:jointNames
                 prepend token[] inputs:jointNames.connect = </World/iw_hub_ROS_01/lift_joint_01/subscribe_lift_cmd.outputs:jointNames>
                 custom double[] inputs:positionCommand
                 prepend double[] inputs:positionCommand.connect = </World/iw_hub_ROS_01/lift_joint_01/subscribe_lift_cmd.outputs:positionCommand>
+                custom string inputs:robotPath = "/World/iw_hub_ROS_01"
+                custom rel inputs:targetPrim (
+                    customData = {
+                        dictionary omni = {
+                            dictionary graph = {
+                                string relType = "target"
+                            }
+                        }
+                    }
+                )
                 custom double[] inputs:velocityCommand
                 prepend double[] inputs:velocityCommand.connect = </World/iw_hub_ROS_01/lift_joint_01/subscribe_lift_cmd.outputs:velocityCommand>
-                custom double[] inputs:effortCommand
-                prepend double[] inputs:effortCommand.connect = </World/iw_hub_ROS_01/lift_joint_01/subscribe_lift_cmd.outputs:effortCommand>
-                custom string inputs:robotPath = "/World/iw_hub_ROS_01"
                 token node:type = "isaacsim.core.nodes.IsaacArticulationController"
                 int node:typeVersion = 1
             }
@@ -6114,10 +6122,6 @@ def Xform "World"
             int2 fileFormatVersion = (1, 9)
             token pipelineStage = "pipelineStageSimulation"
 
-            # 2026-05-27 v6 lift_joint 제어 — ArticulationController + 물리 drive damping
-            #   /iw_hub_ROS_02/lift_command (JointState) → ArticulationController → joint
-            #   Ramping은 lift_joint의 drive damping/stiffness로 물리적으로 처리
-
             def OmniGraphNode "on_tick" (
                 prepend apiSchemas = ["NodeGraphNodeAPI"]
             )
@@ -6125,11 +6129,13 @@ def Xform "World"
                 token node:type = "omni.graph.action.OnPlaybackTick"
                 int node:typeVersion = 2
                 custom double outputs:deltaSeconds
+                custom double outputs:frame
                 custom uint outputs:tick = 0 (
                     customData = {
                         bool isExecution = 1
                     }
                 )
+                custom double outputs:time
             }
 
             def OmniGraphNode "ros2_context" (
@@ -6173,17 +6179,27 @@ def Xform "World"
                 prepend apiSchemas = ["NodeGraphNodeAPI"]
             )
             {
+                custom double[] inputs:effortCommand
+                prepend double[] inputs:effortCommand.connect = </World/iw_hub_ROS_02/lift_joint_02/subscribe_lift_cmd.outputs:effortCommand>
                 custom uint inputs:execIn
                 prepend uint inputs:execIn.connect = </World/iw_hub_ROS_02/lift_joint_02/subscribe_lift_cmd.outputs:execOut>
+                custom int[] inputs:jointIndices
                 custom token[] inputs:jointNames
                 prepend token[] inputs:jointNames.connect = </World/iw_hub_ROS_02/lift_joint_02/subscribe_lift_cmd.outputs:jointNames>
                 custom double[] inputs:positionCommand
                 prepend double[] inputs:positionCommand.connect = </World/iw_hub_ROS_02/lift_joint_02/subscribe_lift_cmd.outputs:positionCommand>
+                custom string inputs:robotPath = "/World/iw_hub_ROS_02"
+                custom rel inputs:targetPrim (
+                    customData = {
+                        dictionary omni = {
+                            dictionary graph = {
+                                string relType = "target"
+                            }
+                        }
+                    }
+                )
                 custom double[] inputs:velocityCommand
                 prepend double[] inputs:velocityCommand.connect = </World/iw_hub_ROS_02/lift_joint_02/subscribe_lift_cmd.outputs:velocityCommand>
-                custom double[] inputs:effortCommand
-                prepend double[] inputs:effortCommand.connect = </World/iw_hub_ROS_02/lift_joint_02/subscribe_lift_cmd.outputs:effortCommand>
-                custom string inputs:robotPath = "/World/iw_hub_ROS_02"
                 token node:type = "isaacsim.core.nodes.IsaacArticulationController"
                 int node:typeVersion = 1
             }

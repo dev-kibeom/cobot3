@@ -34,26 +34,50 @@ ros2 launch slam_nav multi_robot_slam.launch.py rviz:=false
 
 ### Chain 명령 (PoseArray, PC-D dispatcher 또는 수동)
 
-waypoint sequence를 robot이 차례대로 이동. position.z=0 forward, position.z=1 reverse.
+waypoint sequence를 robot이 차례대로 이동. **`position.z` 인코딩 (2026-05-27 확장)**:
+
+| `position.z` | 의미 |
+|---|---|
+| `0` | forward (NavigateToPose) |
+| `1` | reverse (drive_backward, lift 동작 없음) |
+| `2` | reverse + 도착 후 **lift_up (0.04)** + 5초 대기 — dolly 픽업 |
+| `3` | reverse + 도착 후 **lift_down (0.0)** + 5초 대기 — dolly drop |
+
+선택적으로 `header.frame_id = "task_id:<n>"` 으로 작업 ID 전달 시 완료/실패 시 `/<robot>/chain_done` (std_msgs/String) 으로 `task_done:<n>` 또는 `task_failed:<n>` 발행 — PC-D가 DB 갱신용으로 구독.
 
 ```bash
-ros2 topic pub --once /iw_hub_ROS_01/chain_waypoints geometry_msgs/PoseArray "{poses: [
-  {position: {x: 0.0, y: -12.5, z: 0.0}, orientation: {z: 0.707, w: 0.707}},
-  {position: {x: 0.0, y: -15.25, z: 1.0}, orientation: {z: 0.707, w: 0.707}},
-  {position: {x: 0.0, y: -12.5, z: 0.0}, orientation: {z: 0.707, w: 0.707}}
-]}"
+# 수동 예시: robot01 plus의 B→C(pickup)→D 부분 (3 waypoint)
+ros2 topic pub --once /iw_hub_ROS_01/chain_waypoints geometry_msgs/PoseArray \
+  "{header: {frame_id: 'task_id:42'}, poses: [
+    {position: {x: 0.0, y: -12.5,  z: 0.0}, orientation: {z: 0.707, w: 0.707}},
+    {position: {x: 0.0, y: -15.25, z: 2.0}, orientation: {z: 0.707, w: 0.707}},
+    {position: {x: 0.0, y: -12.5,  z: 0.0}, orientation: {z: 0.707, w: 0.707}}
+  ]}"
 ```
 
-또는 사전 정의 경로 (chain_goal.py):
+또는 사전 정의 경로 (chain_goal.py — A~J 자동 시퀀스 + pickup/drop 자동 lift 동작):
 
 ```bash
+# robot01 plus 전체 (C에서 lift_up, G에서 lift_down 자동)
 python3 ~/smart_factory_project/ros2_ws/src/slam_nav/scripts/chain_goal.py \
-  --robot iw_hub_ROS_01 --mode plus --start B --end D
+  --robot iw_hub_ROS_01 --mode plus
+
+# robot01 minus (D pickup, H drop)
+python3 .../chain_goal.py --robot iw_hub_ROS_01 --mode minus
+
+# robot02 동일
+python3 .../chain_goal.py --robot iw_hub_ROS_02 --mode plus
+python3 .../chain_goal.py --robot iw_hub_ROS_02 --mode minus
+
+# 부분 실행
+python3 .../chain_goal.py --robot iw_hub_ROS_01 --mode plus --start B --end D
 ```
 
 | `--robot` | iw_hub_ROS_01 / iw_hub_ROS_02 |
 | `--mode` | plus / minus |
 | `--start --end` | A~J 중 부분 구간 (생략 시 전체) |
+
+**lift 동작 자동 트리거**: ROUTES에 정의된 reverse_code 2/3 waypoint 도착 시 chain_goal이 `/<robot>/lift_target` (Float64) 으로 0.04/0.0 publish → lift_ramper가 4초 ramp 처리 → 5초 대기 후 다음 waypoint 진행.
 
 ### Lift 명령 (dolly 들어올림/내려놓음, 4초 ramp)
 

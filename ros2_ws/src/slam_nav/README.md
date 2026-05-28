@@ -369,7 +369,7 @@ slam_nav/
 
 **Phase 6 — Multi-robot 통합 launch + DB topic 인터페이스** ✅ 통합 완료 (2026-05-26):
 - `launch/multi_robot_slam.launch.py` — robot1+robot2 helper 8종 + Nav2 2 stack + chain_waypoint_server 2개 + RViz 2개 한 번에 spawn (rviz:=false 옵션). 기존 `robot{1,2}_slam.launch.py` 대체.
-- `scripts/chain_waypoint_server.py` — DB(PC-D)가 `/iw_hub_ROS_0N/chain_waypoints` (PoseArray)로 sequence 보내면 자동 실행. **PoseArray 인코딩**: position.x/y=좌표, orientation=yaw, **position.z=0/1 (forward/reverse 플래그)**. robot01/02 독립 처리 (각자 server instance).
+- `scripts/chain_waypoint_server.py` — DB(PC-D)가 `/iw_hub_ROS_0N/chain_waypoints` (PoseArray)로 sequence 보내면 자동 실행. **PoseArray 인코딩 (2026-05-27 확장)**: position.x/y=좌표, orientation=yaw, **position.z = 0/1/2/3** (0=forward, 1=reverse, 2=reverse+lift_up+5초, 3=reverse+lift_down+5초). 선택: `header.frame_id="task_id:<n>"`로 작업 ID 전달 시 완료 시 `/<robot>/chain_done` (String) 으로 `task_done:<n>` 발행. robot01/02 독립 처리 (각자 server instance).
 - 두 robot 병렬 chain 검증: robot1 (plus→minus) + robot2 (plus→minus) 동시 실행 → 모두 정상 완주. 작업 영역 분리 (robot1: -Y, robot2: +Y).
 
 ### 3-2. 시스템 아키텍처 — Phase 별 진행도
@@ -720,6 +720,31 @@ ros2 launch slam_nav robot1_slam.launch.py
 - 사용자 허용 (x±0.08, y±0.10) 만족 ✓.
 - chain 전체 A→J 약 9분 (forward 7 + reverse 2 + yaw align 9회).
 
+### 2026-05-27 (저녁) — chain reverse_code 0/1/2/3 + 자동 lift post-action
+
+**목표** — chain 시퀀스에서 dolly 픽업/drop을 자동화. 사용자 ros2 topic pub 한 줄로 5초 ramp + 후속 navigation 진행.
+
+**구현**:
+- `chain_goal.py` ROUTES `reverse: bool` → `reverse_code: int (0/1/2/3)` 인코딩 확장
+  - 0=forward, 1=reverse only, 2=reverse+lift_up, 3=reverse+lift_down
+  - 패턴: plus의 C(2)/G(3), minus의 D(2)/H(3) — 4개 route 일관
+- `ChainGoalSender._lift_post_action(name, action)`: `/<robot>/lift_target` (Float64) publish + 5초 대기 (4초 lift_ramper ramp + 1초 여유)
+  - `LIFT_POST_WAIT_SEC = 5.0`, `LIFT_UP_TARGET = 0.04`, `LIFT_DOWN_TARGET = 0.0`
+- `execute_sequence(waypoints, task_id="")` — reverse_code 처리 + 완료 시 `/<robot>/chain_done` (String) 으로 `task_done:<id>` publish (task_id 비어있지 않을 때만)
+- `chain_waypoint_server.py` — `position.z=int(round(z))` 파싱, `header.frame_id="task_id:<n>"` 인식 → 완료 시 chain_done 발행. 0~3 외 값은 0(forward)로 fallback.
+- 구버전 호환: ROUTES의 bool reverse도 그대로 동작 (True→1, False→0 자동 변환).
+
+**검증 (Isaac Sim + Nav2 launch)**:
+- robot01 plus B→D: C(rev=2) 도착 → `[C] lift_up → lift_target=0.04, 5초 대기` 출력 + 5초 후 D 자동 진행 ✓
+- robot01 plus E→J: G(rev=3) 도착 → `[G] lift_down → lift_target=0.00, 5초 대기` 출력 + 5초 후 H 자동 진행 ✓
+- C arrival err: (+0.022, +0.046, +1.77°) — 사용자 허용 ±0.05/±0.10 안 ✓
+- 전체 시퀀스 정상 완주 (A~J)
+
+**다음 (PC-D 측 후속)**:
+- Supabase 스키마 (`dolly_tasks`, `task_positions`)
+- Dispatcher 노드 — pending 작업 polling + TEMPLATE+DB 합성 후 PoseArray publish
+- chain_done 구독 → DB status='done' + task_positions delete
+
 ### 2026-05-27 — 코드 통합/최적화 (helper + params + RViz 단일화)
 
 **목표** — robot1_*/robot2_*로 중복된 파일을 namespace 인자 받는 단일 파일로 통합. 두 robot 운영 시 유지보수 부담 절반.
@@ -792,7 +817,8 @@ python3 ~/smart_factory_project/ros2_ws/src/slam_nav/scripts/chain_goal.py --rob
 
 **chain_waypoint_server.py 신규** — DB topic 인터페이스:
 - subscribe `/iw_hub_ROS_0N/chain_waypoints` (geometry_msgs/PoseArray)
-- 인코딩: position.x/y=좌표, orientation=yaw quaternion, **position.z=reverse 플래그(0/1)**
+- 인코딩 (2026-05-27 확장): position.x/y=좌표, orientation=yaw quaternion, **position.z = 0/1/2/3** (0=forward, 1=reverse, 2=reverse+lift_up, 3=reverse+lift_down)
+- 선택: `header.frame_id="task_id:<n>"` 으로 작업 ID 전달 시 sequence 완료/실패 시 `/<robot>/chain_done` (String) 으로 `task_done:<n>` 또는 `task_failed:<n>` 발행 — PC-D dispatcher 가 구독해 DB 상태 갱신
 - 받은 sequence를 `execute_sequence()`로 실행 (큐 1개, 실행 중 새 메시지 무시)
 - robot01/02 각자 server instance — PC-D가 각 topic에 publish하면 독립 동시 처리
 
