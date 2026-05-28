@@ -147,7 +147,7 @@ Screen {
 .stock-table > .datatable--header {
     text-style: bold;
     background: #152d4a;
-}
+}}
 
 /* ── 우측 — 배경색으로 구분, 보더 없음 ── */
 #right-panel {
