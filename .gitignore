@@ -4,17 +4,65 @@
 ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
+ros2_ws/**/test/
+# 루트 / src 안 build·install·log도 모두 제외
+build/
+install/
+log/
+ros2_ws/src/build/
+ros2_ws/src/install/
+ros2_ws/src/log/
+
+# ==========================================
+# 백업 (workspace 안 보관용, push 안 함)
+# ==========================================
+ros2_ws/slam_nav_backups/
+ros2_ws/slam_navigation_backups/
+ros2_ws/src/slam_nav/slam_nav_backups/
+ros2_ws/src/slam_nav/slam_navigation_backups/
+**/*backup*/
+
+# ==========================================
+# 시크릿 / 환경변수 (절대 push 금지)
+# ==========================================
+*.env
+.env
+.env.*
+secrets/
+credentials/
+
+# ==========================================
+# 대용량 binary / 외부 도구
+# ==========================================
+*.zip
+*.tar.gz
+*.tgz
+machbase-neo-*/
+
+# ==========================================
+# Shell / Editor history
+# ==========================================
+.Rhistory
+.bash_history
+.python_history
+
+# ==========================================
+# 잘못 생성된 git 명령 결과 파일
+# ==========================================
+how --stat *
+log --oneline*
 
 # ==========================================
 # 레거시 및 공용 라이브러리
 # ==========================================
-
+ros2_ws/src/doosan-robot2/
 
 
 # ==========================================
 # Data (이미지 및 데이터 파일)
 # ==========================================
 *.pt
+*.usd
 
 # ==========================================
 # Python (임시 및 캐시 파일)
@@ -24,8 +72,6 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
-.env
-env/
 venv/
 
 # ==========================================
@@ -51,15 +97,3 @@ venv/
 # ==========================================
 .DS_Store
 Thumbs.db
-
-# ==========================================
-# Database - Machbase Neo (바이너리/런타임 제외)
-# ==========================================
-database/src/stock_database/*.zip
-database/src/stock_database/machbase-neo-v*/machbase-neo
-database/src/stock_database/machbase-neo-v*/machbase_home/dbs/
-database/src/stock_database/machbase-neo-v*/machbase_home/trc/
-database/src/stock_database/machbase-neo-v*/machbase_home/conf/machbase.pid
-database/src/stock_database/machbase-neo-v*/machbase_home/conf/machbase.lock-*
-database/src/stock_database/machbase-neo-v*/machbase_home/pkgs/
-.Rhistory

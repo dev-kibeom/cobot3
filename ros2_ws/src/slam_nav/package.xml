@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>slam_nav</name>
+  <version>0.1.0</version>
+  <description>
+    Smart factory 자율주행 패키지 (PC-C 역할). 두 iw_hub_ROS_01/02가 사전 절대맵
+    (basic1.png/yaml)과 실시간 SLAM(상대맵)을 결합해 navigation을 수행. 좌표계는
+    상대 → 절대로 통합되며, 경로는 직선 + spin(arc 회피) 패턴.
+
+    파이프라인: PC-D(DB)가 명령 + 경로 발급 → PC-C(이 패키지)가 navigation 실행
+    → PC-A(Isaac Sim) 시각화. 로봇 작업 시나리오: 로봇팔 재료 요청 → Dolly 픽업
+    → 재료 수급 위치 이동 → 로봇팔 위치로 운반 → Dolly 내려놓음 → 대기 위치 복귀.
+  </description>
+
+  <maintainer email="thjune0326@gmail.com">rokey</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>rqt_image_view</exec_depend>
+
+  <exec_depend>navigation2</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_controller</exec_depend>
+  <exec_depend>nav2_planner</exec_depend>
+  <exec_depend>nav2_smoother</exec_depend>
+  <exec_depend>nav2_behaviors</exec_depend>
+  <exec_depend>nav2_bt_navigator</exec_depend>
+  <exec_depend>nav2_waypoint_follower</exec_depend>
+  <exec_depend>nav2_velocity_smoother</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>nav2_msgs</exec_depend>
+  <exec_depend>nav2_amcl</exec_depend>
+  <exec_depend>nav2_rotation_shim_controller</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
