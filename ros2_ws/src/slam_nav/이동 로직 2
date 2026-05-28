@@ -1,0 +1,107 @@
+robot01 plus (A→J, 10 waypoint, reverse 2개: C, G)
+  
+
+ WP	x	y	yaw	reverse  
+  
+ A	0.0	-8.0	90°	F        
+  
+ B			90°	F        
+  
+ C  	   		90°	R (ros2 topic pub --once /iw_hub_ROS_01/lift_target std_msgs/Float64 "data: 0.04" 가동, 5초간 대기)
+  
+ D     			90° 	F        
+  
+ E  	-1.5	-5.5	90°	F        
+  
+ F  		   	0°  	F        
+  
+ G  		  	0°  	R (ros2 topic pub --once /iw_hub_ROS_01/lift_target std_msgs/Float64 "data: 0.0" 가동, 5초간 대기) 
+  
+ H			-90°	F        
+  
+ I	-1.5	-5.5	-90°	F        
+  
+ J  	0.0   	-8.0  	90° 	F        
+  
+
+  robot01 minus (reverse 2개: D, H)
+  
+
+ WP   	x    	y  	yaw	reverse  
+  
+ A  	0.0   	-8.0 	90° 	F        
+  
+ B  	-1.5  	-5.5 	90° 	F        
+  
+ C			0°  	F        
+  
+ D  		   	0°  	R (ros2 topic pub --once /iw_hub_ROS_01/lift_target std_msgs/Float64 "data: 0.04" 가동, 5초간 대기) 
+  
+ E  			90°	F        
+  
+ F	-1.5  	-5.5  	-90°	F        
+  
+ G  	  	 	90° 	F        
+  
+ H  	   		90° 	R (ros2 topic pub --once /iw_hub_ROS_01/lift_target std_msgs/Float64 "data: 0.0" 가동, 5초간 대기) 
+  
+ I  	   	 	90° 	F        
+  
+ J  	0.0   	-8.0  	90° 	F        
+  
+
+  robot02 plus (reverse: C, G)
+
+
+ WP	x	y	yaw	reverse                
+  
+ A	0.0  	20.0 	-90°	F                                     
+  
+ B  	  	 	-90°	F                                     
+  
+ C  	  		-90°	R (ros2 topic pub --once /iw_hub_ROS_02/lift_target std_msgs/Float64 "data: 0.04" 가동, 5초간 대기)
+  
+ D  	  	 	-90°	F                                     
+  
+ E  	1.5  	17.5 	-90°	F                                     
+  
+ F  	  	 	180°	F                                     
+  
+ G  		 	180°	R (ros2 topic pub --once /iw_hub_ROS_02/lift_target std_msgs/Float64 "data: 0.0" 가동, 5초간 대기)                              
+  
+ H  	  	 	90° 	F                                     
+  
+ I  	1.5  	17.5 	90° 	F                                     
+  
+ J  	0.0  	20.0 	-90°	F                                     
+  
+
+  robot02 minus (reverse: D, H)
+
+
+ WP	x	y	yaw	reverse  
+  
+ A  	0.0  	20.0	-90°	F        
+  
+ B  	1.5  	17.5	-90°	F        
+  
+ C  	  		180°	F        
+  
+ D  		 	180°	R (ros2 topic pub --once /iw_hub_ROS_02/lift_target std_msgs/Float64 "data: 0.04" 가동, 5초간 대기)
+  
+ E  	  	 	90° 	F        
+  
+ F  	1.5  	17.5 	90° 	F        
+  
+ G  	  	 	-90°	F        
+  
+ H  	  		-90°	R (ros2 topic pub --once /iw_hub_ROS_02/lift_target std_msgs/Float64 "data: 0.0" 가동, 5초간 대기) 
+  
+ I  	  	 	-90°	F        
+  
+ J  	0.0  	20.0 	-90°	F 
+ 
+ 
+ 지금 각 공정마다 적혀있는 x,y,yaw,reverse값들은 고정이야 현재 공정에 비어있는 x,y값은 DB에서 받아야 하는 값이야 또한 특정 공정에서 ()로 되어 있는 부분은 필수적인 요소로 해당 지점 도착 후 반드시 수행해야 하는 작업이야
+ 위 내용을 바탕으로 로직을 다시 세우고 DB에서 어떻게, 어디에 데이터를 넣어줘야하는지 알려줘
+ 비어 있는 x,y좌표는 가변적인 값으로 db에서 받아들이고 모든 공정을 마치면 초기화 시켜야 하는 값들이야

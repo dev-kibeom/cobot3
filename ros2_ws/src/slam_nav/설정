@@ -1,0 +1,49 @@
+1. launch (한 터미널):
+source /opt/ros/humble/setup.bash
+source ~/smart_factory_project/ros2_ws/install/setup.bash
+export ROS_DOMAIN_ID=101
+ros2 launch slam_nav multi_robot_slam.launch.py
+ros2 launch slam_nav multi_robot_slam.launch.py rviz:=false# RViz 끔
+
+2. 1과정 실행 후 진행 
+
+iw_hub_ROS_01 구동
+
+ros2 topic pub --once /iw_hub_ROS_01/lift_target std_msgs/Float64 "data: 0.04"	#up
+ros2 topic pub --once /iw_hub_ROS_01/lift_target std_msgs/Float64 "data: 0.0"	#dwon
+
+iw_hub_ROS_02 구동
+
+ros2 topic pub --once /iw_hub_ROS_02/lift_target std_msgs/Float64 "data: 0.04"	#up
+ros2 topic pub --once /iw_hub_ROS_02/lift_target std_msgs/Float64 "data: 0.0"	#dwon
+
+
+source /opt/ros/humble/setup.bash
+source ~/smart_factory_project/ros2_ws/install/setup.bash
+export ROS_DOMAIN_ID=101
+python3 ~/smart_factory_project/ros2_ws/src/slam_nav/scripts/chain_goal.py --robot iw_hub_ROS_01 --mode plus --start A --end J
+
+python3 ~/smart_factory_project/ros2_ws/src/slam_nav/scripts/chain_goal.py --robot iw_hub_ROS_01 --mode minus
+
+
+PC-D(DB)에서 두 robot 동시 명령:
+# 명령 A → robot1
+ros2 topic pub --once /iw_hub_ROS_01/chain_waypoints geometry_msgs/PoseArray "..."
+
+# 명령 B → robot2
+ros2 topic pub --once /iw_hub_ROS_02/chain_waypoints geometry_msgs/PoseArray "..."
+
+수동 chain 테스트:
+python3 ~/smart_factory_project/ros2_ws/src/slam_nav/scripts/chain_goal.py --robot iw_hub_ROS_01 --mode plus
+python3 ~/smart_factory_project/ros2_ws/src/slam_nav/scripts/chain_goal.py --robot iw_hub_ROS_02 --mode minus --start B --end D
+
+
+
+1. 픽업 진입 모드 활성:
+ros2 param set /iw_hub_ROS_01_lidar_self_filter dolly_loaded false
+ros2 param set /iw_hub_ROS_01_lidar_self_filter pickup_approach true
+2. (0, -12.5) → 180° spin → (0, -15.25) 후진 진입 + 실제 dolly attach
+3. 운반 모드 전환:
+ros2 param set /iw_hub_ROS_01_lidar_self_filter pickup_approach false
+ros2 param set /iw_hub_ROS_01_lidar_self_filter dolly_loaded true
+
