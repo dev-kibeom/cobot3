@@ -14,14 +14,6 @@ source ~/smart_factory_project/ros2_ws/install/setup.bash
 export ROS_DOMAIN_ID=101
 ```
 
-### Isaac Sim (PC-A) — 시뮬레이션 + 물리/센서
-
-```bash
-# Isaac Sim 실행 (위 환경 셋업된 터미널에서)
-# Open: usd/main_work.usda → Play
-```
-USD가 자동 발행: `/iw_hub_ROS_0N/tf, scan, odom, ...`. cmd_vel 구독.
-
 ### Nav 호스트 (PC-C) — Nav2 + chain + lift
 
 ```bash
@@ -31,29 +23,6 @@ ros2 launch slam_nav multi_robot_slam.launch.py
 # RViz 없이
 ros2 launch slam_nav multi_robot_slam.launch.py rviz:=false
 ```
-
-### Chain 명령 (PoseArray, PC-D dispatcher 또는 수동)
-
-waypoint sequence를 robot이 차례대로 이동. position.z=0 forward, position.z=1 reverse.
-
-```bash
-ros2 topic pub --once /iw_hub_ROS_01/chain_waypoints geometry_msgs/PoseArray "{poses: [
-  {position: {x: 0.0, y: -12.5, z: 0.0}, orientation: {z: 0.707, w: 0.707}},
-  {position: {x: 0.0, y: -15.25, z: 1.0}, orientation: {z: 0.707, w: 0.707}},
-  {position: {x: 0.0, y: -12.5, z: 0.0}, orientation: {z: 0.707, w: 0.707}}
-]}"
-```
-
-또는 사전 정의 경로 (chain_goal.py):
-
-```bash
-python3 ~/smart_factory_project/ros2_ws/src/slam_nav/scripts/chain_goal.py \
-  --robot iw_hub_ROS_01 --mode plus --start B --end D
-```
-
-| `--robot` | iw_hub_ROS_01 / iw_hub_ROS_02 |
-| `--mode` | plus / minus |
-| `--start --end` | A~J 중 부분 구간 (생략 시 전체) |
 
 ### Lift 명령 (dolly 들어올림/내려놓음, 4초 ramp)
 
@@ -68,24 +37,6 @@ ros2 topic pub --once /iw_hub_ROS_01/lift_target std_msgs/Float64 "data: 0.0"
 ros2 topic pub --once /iw_hub_ROS_02/lift_target std_msgs/Float64 "data: 0.02"
 ```
 
-### 진단 명령
-
-```bash
-# 두 robot 토픽 모두 디스커버 됐는지
-ros2 topic list | grep iw_hub_ROS
-
-# Nav2 lifecycle active 확인
-ros2 service call /iw_hub_ROS_01/bt_navigator/get_state lifecycle_msgs/srv/GetState
-
-# chain_waypoint_server 구독자 확인 (1이면 정상)
-ros2 topic info /iw_hub_ROS_01/chain_waypoints
-
-# lift_target 구독자 확인
-ros2 topic info /iw_hub_ROS_01/lift_target
-
-# 두 robot world spawn pose 확인
-ros2 topic echo /iw_hub_ROS_01/tf --once
-```
 
 ### 빌드
 
