@@ -1,42 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4" main_tree_to_execute="task_tree">
-    
     <BehaviorTree ID="task_tree">
         <KeepRunningUntilFailure>
             <Sequence>
-                <FetchTaskFromDB robot_id="IW_HUB_01" 
-                                 server_url="http://127.0.0.1:8001/api/robots/amr" 
+                <FetchTaskFromDB robot_id="{robot_id}" 
+                                 server_url="{server_url}" 
                                  task_id="{task_id}"
                                  task_type="{task_type}" 
+                                 storage_x="{storage_x}"
+                                 storage_y="{storage_y}"
+                                 storage_yaw="{storage_yaw}"
                                  task_x="{target_x}" 
                                  task_y="{target_y}" 
                                  task_yaw="{target_yaw}"/>
                 
                 <Fallback name="MainDispatcher">
-                    
                     <Action ID="HandleEmergencyStop" _precondition="emergency_stop == true"/>
 
                     <Sequence name="MaterialSupplyMission" _precondition="task_type == 'supply'">
+                        <Action ID="SendNav2Goal" x="{storage_x}" y="{storage_y}" yaw="{storage_yaw}"/>
+                        
+                        <Action ID="SimulateLoading"/>
+                        <Action ID="BackUp"/>
+
                         <Action ID="SendNav2Goal" x="{target_x}" y="{target_y}" yaw="{target_yaw}"/>
                         
-                        <Action ID="NotifyArrival" task_id="{task_id}" robot_id="IW_HUB_01"/>
-                        
-                        <Action ID="ReportTaskCompleteToDB" task_id="{task_id}" robot_id="IW_HUB_01" server_url="http://127.0.0.1:8001/api/robots/amr"/>
+                        <Action ID="NotifyArrival" task_id="{task_id}" robot_id="{robot_id}"/>
+
+                        <Action ID="SimulateLoading"/>
+                        <Action ID="BackUp"/>
+                        <Action ID="ReportTaskCompleteToDB" task_id="{task_id}" robot_id="{robot_id}" server_url="{server_url}"/>
                     </Sequence>
 
                     <Sequence name="ProductCollectionMission" _precondition="task_type == 'collect'">
                         <Action ID="SendNav2Goal" x="{target_x}" y="{target_y}" yaw="{target_yaw}"/>
-                        
-                        <Action ID="NotifyArrival" task_id="{task_id}" robot_id="IW_HUB_01"/>
-
-                        <Action ID="ReportTaskCompleteToDB" task_id="{task_id}"/>
+                        <Action ID="NotifyArrival" task_id="{task_id}" robot_id="{robot_id}"/>
+                        <Action ID="ReportTaskCompleteToDB" task_id="{task_id}" robot_id="{robot_id}" server_url="{server_url}"/>
                     </Sequence>
 
                     <Sequence name="IdleRoutine" _precondition="task_type == 'idle'">
                         <Action ID="SendNav2Goal" x="0.0" y="0.0" yaw="0.0"/>
                         <Action ID="HoldPosition"/>
                     </Sequence>
-
                 </Fallback>
             </Sequence>
         </KeepRunningUntilFailure>
@@ -48,29 +53,29 @@
             <input_port name="server_url"/>
             <output_port name="task_id"/>
             <output_port name="task_type"/>
+            <output_port name="storage_x"/>
+            <output_port name="storage_y"/>
+            <output_port name="storage_yaw"/>
             <output_port name="task_x"/>
             <output_port name="task_y"/>
             <output_port name="task_yaw"/>
         </Action>
         <Action ID="HandleEmergencyStop"/>
-        
+        <Action ID="SimulateLoading"/>
         <Action ID="SendNav2Goal">
             <input_port name="x"/>
             <input_port name="y"/>
             <input_port name="yaw"/>
         </Action>
-        
         <Action ID="NotifyArrival">
             <input_port name="task_id"/>
             <input_port name="robot_id"/>
         </Action>
-        
         <Action ID="ReportTaskCompleteToDB">
             <input_port name="robot_id"/>
             <input_port name="task_id"/>
             <input_port name="server_url"/>
         </Action>
-        
         <Action ID="HoldPosition"/>
     </TreeNodesModel>
 </root>

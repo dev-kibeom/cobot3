@@ -85,7 +85,7 @@ class BaseRobotController(Node, ABC):
 
         # FK 연산
         oM_ee = self.pino_core.get_fk_pose(self.current_q)
-        camera_offset = pin.SE3(np.eye(3), np.array([0.0, 0.0, 0.05]))
+        camera_offset = pin.SE3(np.eye(3), np.array([0.01, 0.05, 0.05]))
         oM_camera = oM_ee * camera_offset
 
         target_base_pos = oM_camera.act(cam_pt)

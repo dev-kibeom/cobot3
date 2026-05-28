@@ -24,8 +24,8 @@ setup(
     entry_points={
         "console_scripts": [
             "mqtt_trigger = bridge.mqtt_trigger:main",
+            "mqtt_receiver = bridge.mqtt_receiver:main",
             "image_bridge = bridge.image_bridge_node:main",
-            "lidar_bridge = bridge.lidar_bridge_node:main",
         ],
     },
 )

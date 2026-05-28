@@ -18,7 +18,7 @@ def generate_launch_description():
     )
     param_dir = LaunchConfiguration(
         "params_file",
-        default=os.path.join(bringup_dir, "config", "iw_hub_nav2_params.yaml"),
+        default=os.path.join(bringup_dir, "config", "iw_hub_nav2_params_robot2.yaml"),
     )
     rviz_config_dir = os.path.join(bringup_dir, "rviz2", "iw_hub_nav2.rviz")
 
@@ -83,10 +83,12 @@ def generate_launch_description():
                 executable="bt_scheduler",
                 name="bt_manager",
                 output="screen",
-                prefix=["xterm -e"],
+                prefix=["xterm -hold -e"],
                 parameters=[
-                    {"robot_id": "IW_HUB-01"},  # 로봇 이름 동적 주입
-                    {"server_url": [hub_ip, ":8001/api/robots/amr"]},  # 단순 리스트로 묶으면 자동으로 문자열이 합쳐집니다.
+                    {"robot_id": "IW_HUB-02"},  # 로봇 이름 동적 주입
+                    {
+                        "server_url": [hub_ip, ":8001/api/robots/amr"]
+                    },  # 단순 리스트로 묶으면 자동으로 문자열이 합쳐집니다.
                 ],
             ),
         ]

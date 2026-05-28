@@ -21,6 +21,11 @@ public:
             BT::InputPort<std::string>("server_url"),
             BT::OutputPort<std::string>("task_id"),   
             BT::OutputPort<std::string>("task_type"), 
+
+            BT::OutputPort<double>("storage_x"),
+            BT::OutputPort<double>("storage_y"),
+            BT::OutputPort<double>("storage_yaw"),
+
             BT::OutputPort<double>("task_x"),
             BT::OutputPort<double>("task_y"),
             BT::OutputPort<double>("task_yaw")
@@ -47,6 +52,12 @@ public:
                     // JSON 구조에 맞게 데이터 추출 (서버 응답 구조에 맞춰 키값 확인 필요)
                     setOutput("task_id", data.value("task_id", "unknown_task")); 
                     setOutput("task_type", data.value("task_type", "supply"));
+                    
+                    if (data.contains("storage") && !data["storage"].is_null()) {
+                        setOutput("storage_x", data["storage"]["x"].get<double>());
+                        setOutput("storage_y", data["storage"]["y"].get<double>());
+                        setOutput("storage_yaw", data["storage"]["yaw"].get<double>());
+                    }
                     
                     setOutput("task_x", data["goal"]["x"].get<double>());
                     setOutput("task_y", data["goal"]["y"].get<double>());
