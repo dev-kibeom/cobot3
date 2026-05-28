@@ -6,6 +6,17 @@ ros2_ws/install/
 ros2_ws/log/
 ros2_ws/**/test/
 
+# colcon artifacts accidentally nested under ros2_ws/src
+ros2_ws/src/build/
+ros2_ws/src/install/
+ros2_ws/src/log/
+ros2_ws/src/vision/build/
+ros2_ws/src/vision/install/
+ros2_ws/src/vision/log/
+ros2_ws/src/vision/vision/build/
+ros2_ws/src/vision/vision/install/
+ros2_ws/src/vision/vision/log/
+
 # ==========================================
 # 레거시 및 공용 라이브러리
 # ==========================================
@@ -17,6 +28,10 @@ ros2_ws/src/doosan-robot2/
 # ==========================================
 *.pt
 *.usd
+
+# vision: exclude large input datasets, but keep trained best.pt + run outputs
+ros2_ws/src/vision/work/datasets/
+!ros2_ws/src/vision/work/runs/**/weights/best.pt
 
 # ==========================================
 # Python (임시 및 캐시 파일)
