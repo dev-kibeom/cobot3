@@ -31,6 +31,10 @@ class TransportRobot(Base):
     goal_y = Column(Float, nullable=True)
     goal_yaw = Column(Float, nullable=True)
 
+    storage_x = Column(Float, nullable=True)
+    storage_y = Column(Float, nullable=True)
+    storage_yaw = Column(Float, nullable=True)
+
 
 # 🦾 [테이블 2] 로봇팔 (Manipulator)
 class ManipulatorArm(Base):
@@ -81,6 +85,8 @@ class Workstation(Base):
 
     needs_supply = Column(Boolean, default=False)  # True면 자재 공급 로봇 호출
     product_ready = Column(Boolean, default=False)  # True면 완제품 수거 로봇 호출
+
+    allocated_storage_id = Column(String, nullable=True)
 
 
 # 📦 [테이블 5] 원자재 보관대 (Raw Material Storage)

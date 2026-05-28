@@ -1,9 +1,26 @@
 {
   "workstations": [
-    {"id": "STATION-001", "name": "Assembly_Line", "x": 5.5, "y": -2.0, "yaw": 1.57},
-    {"id": "STATION-002", "name": "Inspection_Desk", "x": 8.0, "y": 1.0, "yaw": 0.0}
+    {"id": "STATION-006", "name": "CNC", "x": 3.5, "y": 12.0, "yaw": 0.0},
+    {"id": "STATION-001", "name": "Press", "x": 3.5, "y": 12.0, "yaw": 180.0},
+    {"id": "STATION-002", "name": "Press", "x": -3.5, "y": 6.0, "yaw": 180.0},
+    {"id": "STATION-003", "name": "Press", "x": -3.5, "y": 12.0, "yaw": 180.0},
+    {"id": "STATION-004", "name": "CNC", "x": 3.5, "y": 0.0, "yaw": 0.0},
+    {"id": "STATION-005", "name": "CNC", "x": 3.5, "y": 6.0, "yaw": 0.0}
   ],
   "storages": [
-    {"id": "STORAGE-001", "material": "Iron_Cube", "x": -5.0, "y": -5.0, "yaw": 0.0}
+    {"id": "STORAGE-009", "material": "Iron_Cube", "x": -3.0, "y": 26.0, "yaw": 90.0},
+    {"id": "STORAGE-010", "material": "Iron_Plate", "x":-1.5, "y": 26.0, "yaw": 90.0},
+    {"id": "STORAGE-011", "material": "Iron_Cube", "x": 0.0, "y": 26.0, "yaw": 90.0},
+    {"id": "STORAGE-012", "material": "Iron_Plate", "x": 3.0, "y": 26.0, "yaw": 90.0},
+    {"id": "STORAGE-013", "material": "Iron_Cube", "x": 4.5, "y": 26.0, "yaw": 90.0},
+
+    {"id": "STORAGE-001", "material": "Iron_Cube", "x": 4.5, "y": -13.5, "yaw": -90.0},
+    {"id": "STORAGE-002", "material": "Iron_Plate", "x": 3.0, "y": -13.5, "yaw": -90.0},
+    {"id": "STORAGE-003", "material": "Iron_Cube", "x": 1.5, "y": -13.5, "yaw": -90.0},
+    {"id": "STORAGE-004", "material": "Iron_Plate", "x": 0.0, "y": -13.5, "yaw": -90.0},
+    {"id": "STORAGE-005", "material": "Iron_Cube", "x": -1.5, "y": -13.5, "yaw": -90.0},
+    {"id": "STORAGE-006", "material": "Iron_Cube", "x": -3.0, "y": -13.5, "yaw": -90.0},
+    {"id": "STORAGE-007", "material": "Iron_Cube", "x": -4.5, "y": -13.5, "yaw": -90.0},
+    {"id": "STORAGE-008", "material": "Iron_Cube", "x": -6.0, "y": -13.5, "yaw": -90.0}
   ]
 }

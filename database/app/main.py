@@ -74,12 +74,14 @@ class StatusUpdate(BaseModel):
     status: str
     completed_task: Optional[str] = None  
 
+class OrderRequest(BaseModel):
+    material_type: str  # 예: Iron_Cube, Iron_Plate
+    station_name: str  # 예: Press, CNC
+
 
 # ==========================================
 # 3. API 엔드포인트 (REST 라우터)
 # ==========================================
-
-
 @app.get("/")
 def read_root():
     return {"message": "FMS Central Server is Running"}
@@ -113,6 +115,86 @@ def test_trigger_supply(station_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": f"🚩 {station_id}에 자재 공급 요청이 발령되었습니다!"}
+
+# --- 스마트 팩토리 실시간 주문 접수 API ---
+@app.post("/api/orders")
+def create_order(request: OrderRequest, db: Session = Depends(get_db)):
+    # 1. 요청받은 공정(Press/CNC)을 수행할 수 있는 비어있는(AVAILABLE) 작업대 선점
+    workstation = (
+        db.query(Workstation)
+        .filter(
+            Workstation.name == request.station_name, Workstation.status == "AVAILABLE"
+        )
+        .first()
+    )
+
+    if not workstation:
+        raise HTTPException(
+            status_code=400,
+            detail=f"현재 가동 가능한 {request.station_name} 장비(작업대)가 없습니다.",
+        )
+
+    # =========================================================
+    # 창고 분산 알고리즘 (로봇 점유까지 확인)
+    # =========================================================
+
+    # 조건 A: 아직 스케줄러가 가져가지 않은 대기 중인 창고 ID
+    pending_storage_ids = [
+        ws.allocated_storage_id
+        for ws in db.query(Workstation)
+        .filter(Workstation.allocated_storage_id != None)
+        .all()
+    ]
+
+    # 조건 B: 이미 로봇들이 배정받아 이동 중인 물리적 창고 '좌표'들
+    active_robots = (
+        db.query(TransportRobot).filter(TransportRobot.storage_x != None).all()
+    )
+    active_storage_coords = [(r.storage_x, r.storage_y) for r in active_robots]
+
+    # STOCKED 상태의 창고를 모두 가져와서 필터링 시작
+    all_available_storages = (
+        db.query(RawMaterialStorage)
+        .filter(
+            RawMaterialStorage.material_type == request.material_type,
+            RawMaterialStorage.status == "STOCKED",
+            ~RawMaterialStorage.id.in_(pending_storage_ids),  # 조건 A 필터링
+        )
+        .all()
+    )
+
+    storage = None
+    for st in all_available_storages:
+        # 조건 B 필터링: 로봇이 이미 향하고 있는 좌표와 겹치지 않는 첫 번째 창고 선택!
+        if (st.location_x, st.location_y) not in active_storage_coords:
+            storage = st
+            break
+
+    if not storage:
+        raise HTTPException(
+            status_code=400, detail=f"{request.material_type} 자재의 재고가 부족합니다."
+        )
+
+    # 3. 매핑 연동 및 공급 트리거 발동
+    workstation.status = "OCCUPIED"  # 다른 주문이 채가지 못하도록 즉시 잠금
+    workstation.needs_supply = True
+    workstation.allocated_storage_id = storage.id
+
+    db.commit()
+
+    print(
+        f"🛒 [주문 접수] 제품 공정: {request.station_name} | 필요 자재: {request.material_type}"
+    )
+    print(f"   ➔ 매핑 결과: {workstation.id}번 작업대에 {storage.id}번 자재 입고 지시")
+
+    return {
+        "status": "주문 완료",
+        "message": f"성공적으로 주문이 접수되어 {workstation.id} 장비에 {storage.id} 자재가 배정되었습니다.",
+        "assigned_resources": {
+            "workstation_id": workstation.id,
+            "storage_id": storage.id,
+        },
+    }
 
 # --- [명령 하달] 관리자가 운반 로봇(AMR)에게 목표를 지정 ---
 @app.post("/api/robots/amr/{robot_id}/goal")
@@ -176,16 +258,22 @@ def set_amr_goal_by_node(
         },
     }
 
+# --- C++ 관제탑 하달용 Task API 확장 ---
 @app.get("/api/robots/amr/{robot_id}/task")
 def get_amr_task(robot_id: str, db: Session = Depends(get_db)):
     robot = db.query(TransportRobot).filter(TransportRobot.id == robot_id).first()
 
-    # 🚀 C++ BT가 파싱할 수 있도록 task_id와 task_type을 함께 반환합니다.
     if robot and robot.status == "IDLE" and robot.current_task_id is not None:
+        # C++ Behavior Tree가 두 좌표를 모두 가져갈 수 있도록 확장된 데이터 구조 전송
         return {
             "has_task": True,
             "task_id": robot.current_task_id,
             "task_type": robot.current_task_type,
+            "storage": {
+                "x": robot.storage_x,
+                "y": robot.storage_y,
+                "yaw": robot.storage_yaw,
+            },
             "goal": {"x": robot.goal_x, "y": robot.goal_y, "yaw": robot.goal_yaw},
         }
     return {"has_task": False}
@@ -206,20 +294,25 @@ def update_amr_status(
     robot.status = update.status
 
     if update.status == "ARRIVED":
-        robot.goal_x = None
-        robot.goal_y = None
-        robot.goal_yaw = None
-        # 도착 시 MQTT 트리거 (기존과 동일)
-        trigger_payload = {"event": "AMR_ARRIVED", "robot_id": robot_id}
+        trigger_payload = {
+            "event": "AMR_ARRIVED",
+            "robot_id": robot_id,
+            "station_id": robot.current_task_target_node,  # (DB 스키마에 목적지 ID 속성이 있다고 가정)
+        }
+        
         mqtt_service.publish_trigger("fms/trigger/arm", trigger_payload)
 
-    # 🚀 추가: C++ 관제탑이 'ReportTaskCompleteToDB' 노드로 IDLE 상태를 보내면 작업 초기화
+    # C++ 관제탑이 'ReportTaskCompleteToDB' 노드로 IDLE 상태를 보내면 작업 초기화
     elif update.status == "IDLE" and update.completed_task:
         print(
             f"✅ {robot_id}가 임무({update.completed_task})를 완전히 종료하고 대기 상태로 복귀했습니다."
         )
         robot.current_task_id = None
         robot.current_task_type = None
+
+        robot.storage_x = None
+        robot.storage_y = None
+        robot.storage_yaw = None
 
     db.commit()
     return {"message": f"Status updated to {update.status}"}
